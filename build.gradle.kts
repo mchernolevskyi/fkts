@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     implementation("com.neuronrobotics:nrjavaserial:3.15.0")
-	
+    implementation("commons-io:commons-io:2.6")
 }
 
 version = "1.2.1"
