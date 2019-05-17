@@ -10,43 +10,33 @@ import java.util.zip.Deflater;
 public class SerialWorker {
 
     public static void main(String[] args) throws Exception {
-        new SerialWorker().start();
+        String message = "The java.util.zip.Deflater.deflate(byte[] b) method https://www.tutorialspoint.com/javazip/javazip_deflater_deflate.htm T&(^&(*^&(U*(_";
+        new SerialWorker().sendMessage(message);
     }
 
-    public void start() throws IOException, InterruptedException {
+    public void sendMessage(String message) throws IOException, InterruptedException {
         String port = "COM4";
         int baudRate = 9600;
+        int timesToSend = 3;
+        long timeoutMs = 1000;
+
         NRSerialPort serial = new NRSerialPort(port, baudRate);
         serial.connect();
 
         //DataInputStream ins = new DataInputStream(serial.getInputStream());
         //DataOutputStream outs = new DataOutputStream(serial.getOutputStream());
 
-        //outs.write(b);
-        //byte b = ins.read();
+        byte [] bytes = (message).getBytes();
+        byte [] compressedBytes = new Compressor().compress(bytes);
 
         BufferedOutputStream out = IOUtils.buffer(serial.getOutputStream());
-        byte [] bytes = (
-                "The java.util.zip.Deflater.deflate(byte[] b) method https://www.tutorialspoint.com/javazip/javazip_deflater_deflate.htm T&(^&(*^&(U*(_"
-                ).getBytes();
-
-        System.out.println("Input size [" + bytes.length + "] bytes");
-        Deflater deflater = new Deflater();
-        deflater.setInput(bytes);
-        deflater.finish();
-        byte[] compressed = new byte[1024];
-        int compressedDataLength = deflater.deflate(compressed);
-        System.out.println("Compressed size [" + compressedDataLength + "] bytes");
-
-        //LocalDate start = LocalDate.now();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < timesToSend; i++) {
             long start = System.currentTimeMillis();
-            out.write(compressed, 0, compressedDataLength);
+            out.write(compressedBytes);
             out.flush();
-            System.out.println("Sent [" + compressedDataLength + "] bytes in [" + (System.currentTimeMillis() - start) + "] ms");
-            Thread.sleep(1000);
+            System.out.println("Sent [" + compressedBytes.length + "] bytes in [" + (System.currentTimeMillis() - start) + "] ms");
+            Thread.sleep(timeoutMs);
         }
-
         serial.disconnect();
     }
 
