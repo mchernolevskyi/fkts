@@ -11,9 +11,10 @@ import java.util.zip.Deflater;
 public class SerialWorker {
 
     public static void main(String[] args) throws Exception {
-        String message = "The java.util.zip.Deflater.deflate(byte[] b) method https://www.tutorialspoint.com/javazip/javazip_deflater_deflate.htm T&(^&(*^&(U*(_";
+        String message = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.";
         //new SerialWorker().sendMessage(message);
         new Compressor().compress(message.getBytes(), Method.LZMA);
+        new Compressor().compress(message.getBytes(), Method.DEFLATE);
     }
 
     public void sendMessage(String message) throws IOException, InterruptedException {
