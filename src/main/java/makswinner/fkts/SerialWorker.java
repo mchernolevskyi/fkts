@@ -1,6 +1,7 @@
 package makswinner.fkts;
 
 import gnu.io.NRSerialPort;
+import makswinner.fkts.Compressor.Method;
 import org.apache.commons.io.IOUtils;
 
 import java.io.BufferedOutputStream;
@@ -11,7 +12,8 @@ public class SerialWorker {
 
     public static void main(String[] args) throws Exception {
         String message = "The java.util.zip.Deflater.deflate(byte[] b) method https://www.tutorialspoint.com/javazip/javazip_deflater_deflate.htm T&(^&(*^&(U*(_";
-        new SerialWorker().sendMessage(message);
+        //new SerialWorker().sendMessage(message);
+        new Compressor().compress(message.getBytes(), Method.LZMA);
     }
 
     public void sendMessage(String message) throws IOException, InterruptedException {
@@ -23,7 +25,7 @@ public class SerialWorker {
         NRSerialPort serial = new NRSerialPort(port, baudRate);
         serial.connect();
 
-        byte [] compressedBytes = new Compressor().compress(message.getBytes());
+        byte [] compressedBytes = new Compressor().compress(message.getBytes(), Method.DEFLATE);
 
         BufferedOutputStream out = IOUtils.buffer(serial.getOutputStream());
         for (int i = 0; i < timesToSend; i++) {
