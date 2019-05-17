@@ -1,14 +1,13 @@
 package makswinner.fkts;
 
-import java.io.BufferedInputStream;
+import org.tukaani.xz.LZMA2Options;
+import org.tukaani.xz.LZMAOutputStream;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.Deflater;
-import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
-import org.tukaani.xz.LZMA2Options;
-import org.tukaani.xz.LZMAOutputStream;
 
 public class Compressor {
 
