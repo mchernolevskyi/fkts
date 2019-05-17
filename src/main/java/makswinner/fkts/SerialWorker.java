@@ -23,11 +23,7 @@ public class SerialWorker {
         NRSerialPort serial = new NRSerialPort(port, baudRate);
         serial.connect();
 
-        //DataInputStream ins = new DataInputStream(serial.getInputStream());
-        //DataOutputStream outs = new DataOutputStream(serial.getOutputStream());
-
-        byte [] bytes = (message).getBytes();
-        byte [] compressedBytes = new Compressor().compress(bytes);
+        byte [] compressedBytes = new Compressor().compress(message.getBytes());
 
         BufferedOutputStream out = IOUtils.buffer(serial.getOutputStream());
         for (int i = 0; i < timesToSend; i++) {
