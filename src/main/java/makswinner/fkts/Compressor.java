@@ -1,11 +1,8 @@
 package makswinner.fkts;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
-import java.util.zip.InflaterInputStream;
 
 public class Compressor {
 
@@ -25,7 +22,7 @@ public class Compressor {
     return result;
   }
 
-  private byte [] decompressDeflate(byte [] input) throws IOException, DataFormatException {
+  private byte [] decompressDeflate(byte [] input) throws DataFormatException {
     Inflater inflater = new Inflater(true);
     inflater.setInput(input);
     byte[] decompressed = new byte[2048];
@@ -35,7 +32,7 @@ public class Compressor {
     return result;
   }
 
-  public byte [] compress(byte [] input, Method method) throws IOException {
+  public byte [] compress(byte [] input, Method method) {
     System.out.print("Compression start: method [" + method + "], input array of [" + input.length + "] bytes ->");
     byte [] result;
     switch(method) {
@@ -46,11 +43,11 @@ public class Compressor {
     return result;
   }
 
-  public byte [] compress(byte [] input) throws IOException {
+  public byte [] compress(byte [] input) {
     return compress(input, Method.DEFLATE);
   }
 
-  public byte [] decompress(byte [] input, Method method) throws IOException, DataFormatException {
+  public byte [] decompress(byte [] input, Method method) throws DataFormatException {
     System.out.print("Decompression start: method [" + method + "], input array of [" + input.length + "] bytes ->");
     byte [] result;
     switch(method) {
@@ -61,7 +58,7 @@ public class Compressor {
     return result;
   }
 
-  public byte [] decompress(byte [] input) throws IOException, DataFormatException {
+  public byte [] decompress(byte [] input) throws DataFormatException {
     return decompress(input, Method.DEFLATE);
   }
 
