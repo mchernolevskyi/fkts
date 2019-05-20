@@ -16,7 +16,7 @@ dependencies {
     implementation("commons-io:commons-io:2.6")
     implementation("org.apache.commons:commons-lang3:3.9")
     implementation("org.slf4j:slf4j-simple:1.7.26")
-    compileOnly("org.projectlombok:lombok:1.16.10")
+    compileOnly("org.projectlombok:lombok:1.18.8")
 }
 
 version = "1.2.1"

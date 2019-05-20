@@ -3,11 +3,13 @@ package makswinner.fkts;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class Compressor {
 
   public enum Method {
-    LZMA,//maybe add some unique algorithm
+    LZMA,//tested, not good enough, maybe switch to some new algorithm in future
     DEFLATE
   }
 
@@ -33,13 +35,13 @@ public class Compressor {
   }
 
   public byte [] compress(byte [] input, Method method) {
-    System.out.print("Compression start: method [" + method + "], input array of [" + input.length + "] bytes ->");
+    log.info("Compression start: method [{}], input of [{}] bytes", method, input.length);
     byte [] result;
     switch(method) {
       case DEFLATE: result = compressDeflate(input); break;
-      default: result = compressDeflate(input);
+      default: throw new RuntimeException("Compression method not supported");
     }
-    System.out.println(" compressed size [" + result.length + "] bytes");
+    log.info("Compression end: method [{}], compressed size [{}] bytes", method, result.length);
     return result;
   }
 
@@ -48,13 +50,13 @@ public class Compressor {
   }
 
   public byte [] decompress(byte [] input, Method method) throws DataFormatException {
-    System.out.print("Decompression start: method [" + method + "], input array of [" + input.length + "] bytes ->");
+    log.info("Decompression start: method [{}], input of [{}] bytes", method, input.length);
     byte [] result;
     switch(method) {
       case DEFLATE: result = decompressDeflate(input); break;
-      default: result = decompressDeflate(input);
+      default: throw new RuntimeException("Compression method not supported");
     }
-    System.out.println(" decompressed size [" + result.length + "] bytes");
+    log.info("Decompression end: method [{}], decompressed size [{}] bytes", method, result.length);
     return result;
   }
 

@@ -73,15 +73,7 @@ public class SerialWorker {
         }
     }
 
-    private byte[] toByteArray(int value) {
-        return  ByteBuffer.allocate(4).putInt(value).array();
-    }
-
-    private int fromByteArray(byte[] bytes, int offset, int length) {
-        return ByteBuffer.wrap(bytes, offset, length).getInt();
-    }
-
-    public void receiveMessage() throws IOException, InterruptedException, DataFormatException {
+    public void receiveMessage() throws IOException, DataFormatException {
         NRSerialPort serial = new NRSerialPort(port, baudRate);
         serial.connect();
         BufferedInputStream in = IOUtils.buffer(serial.getInputStream());
@@ -93,11 +85,11 @@ public class SerialWorker {
         int seconds = fromByteArray(decompressedBytes, 0, 4);
         LocalDateTime dateTime = fromSeconds(seconds);
         log.info("Received [{}] bytes:", decompressedBytes.length - 4);
-        Message message = Message.builder().received(true).dateTime(dateTime).build();
-
+        String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
         //TODO parse
 
-
+        Message message = Message.builder().received(true).dateTime(dateTime).build();
+        messages.put(message.getTopic(), message);
         serial.disconnect();
     }
 
@@ -113,6 +105,14 @@ public class SerialWorker {
     private LocalDateTime fromSeconds(int seconds) {
         //Since 20190101
         return LocalDateTime.now();//TODO
+    }
+
+    private byte[] toByteArray(int value) {
+        return  ByteBuffer.allocate(4).putInt(value).array();
+    }
+
+    private int fromByteArray(byte[] bytes, int offset, int length) {
+        return ByteBuffer.wrap(bytes, offset, length).getInt();
     }
 
 }
