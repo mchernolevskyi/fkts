@@ -2,19 +2,21 @@ package makswinner.fkts;
 
 import gnu.io.NRSerialPort;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.DataFormatException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
-
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.time.LocalDateTime;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class SerialWorker {
@@ -140,13 +142,13 @@ public class SerialWorker {
     }
 
     private int toSeconds(LocalDateTime dateTime) {
-        //Since 20190101
-        return 46276481;//TODO
+      long ms = dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+      return (int) (ms / 1000);
     }
 
     private LocalDateTime fromSeconds(int seconds) {
-        //Since 20190101
-        return LocalDateTime.now();//TODO
+      long ms = ((long) seconds) * 1000L;
+      return LocalDateTime.ofInstant(Instant.ofEpochMilli(ms), TimeZone.getDefault().toZoneId());
     }
 
     private byte[] toByteArray(int value) {
