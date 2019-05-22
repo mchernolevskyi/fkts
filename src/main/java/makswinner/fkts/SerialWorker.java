@@ -120,7 +120,7 @@ public class SerialWorker implements Runnable {
                     String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
                     Message message = reconstructMessage(receivedText, seconds);
                     MESSAGES.put(message.getTopic(), message);
-                    log.info("Message: [{}]", message.getText());
+                    log.info("Message: [{}]", message);
                 }
                 Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
             } catch (IOException e) {
