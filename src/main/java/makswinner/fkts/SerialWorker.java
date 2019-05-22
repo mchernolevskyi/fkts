@@ -18,7 +18,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class SerialWorker {
-    private static final String SERIAL_PORT = "COM4";
+    private static final String SERIAL_PORT = "/dev/pts/1";
     private static final int BAUD_RATE = 9600;
     private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
     private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 5000;
@@ -56,7 +56,6 @@ public class SerialWorker {
         new Thread(() -> {
             sendMessages(serialOutputStream);
         }).start();
-
         serial.disconnect();
     }
 
@@ -90,6 +89,8 @@ public class SerialWorker {
                 log.error("IOException while sending", e);
             } catch (InterruptedException e) {
                 log.error("InterruptedException while sending", e);
+            } catch (Exception e) {
+                log.error("Undefined exception while sending", e);
             }
         }
     }
@@ -117,6 +118,8 @@ public class SerialWorker {
                 log.error("DataFormatException while receiving", e);
             } catch (InterruptedException e) {
                 log.error("InterruptedException while receiving", e);
+            } catch (Exception e) {
+                log.error("Undefined exception while receiving", e);
             }
         }
     }
