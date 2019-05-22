@@ -19,12 +19,12 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 
 @Slf4j
-public class SerialWorker {
-    private static final String SERIAL_PORT = "/dev/pts/1";
+public class SerialWorker implements Runnable {
+    private static final String SERIAL_PORT = "COM4";
     private static final int BAUD_RATE = 9600;
     private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
-    private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 5000;
-    private static final long TIMEOUT_BETWEEN_SENDING = 1000;
+    private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 1000;
+    private static final long TIMEOUT_BETWEEN_SENDING = 2000;
     private static final long TIMEOUT_BETWEEN_RECEIVING = 100;
 
     public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
@@ -33,18 +33,18 @@ public class SerialWorker {
     private final Compressor compressor = new Compressor();
 
     public static void main(String[] args) throws Exception {
-        String topic = "/Україна/Київ/балачки";
-        String user = "Все буде Україна!";
-        String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля. " +
-                "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
-        Message message = Message.builder().topic(topic).user(user).text(text).dateTime(LocalDateTime.now()).build();
-        OUT_QUEUE.offer(message);
-        new SerialWorker().run();
+        new Thread(new SerialWorker()).start();
 
-//        Compressor compressor = new Compressor();
-//        byte [] compressed = compressor.compress(text.getBytes());
-//        byte [] decompressed = compressor.decompress(compressed);
-//        log.info("res = {}", new String(decompressed));
+        int i = 0;
+        while (true) {
+            String topic = "/Україна/Київ/балачки";
+            String user = "Все буде Україна!";
+            String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля. " +
+                    "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці: " + i++;
+            Message message = Message.builder().topic(topic).user(user).text(text).dateTime(LocalDateTime.now()).build();
+            OUT_QUEUE.offer(message);
+            Thread.sleep(3000);
+        }
     }
 
     public void run() {
@@ -112,6 +112,7 @@ public class SerialWorker {
                     String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
                     Message message = reconstructMessage(receivedText, seconds);
                     MESSAGES.put(message.getTopic(), message);
+                    log.info("Message: [{}]", message.getText());
                 }
                 Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
             } catch (IOException e) {
