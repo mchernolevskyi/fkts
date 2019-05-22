@@ -18,13 +18,15 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Slf4j
 public class SerialWorker {
-    private static final String port = "COM4";
-    private static final int baudRate = 9600;
-    private static final int timesToSend = 2;
-    private static final long timeoutMs = 5000;
+    private static final String SERIAL_PORT = "COM4";
+    private static final int BAUD_RATE = 9600;
+    private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
+    private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 5000;
+    private static final long TIMEOUT_BETWEEN_SENDING = 1000;
+    private static final long TIMEOUT_BETWEEN_RECEIVING = 100;
 
-    public static final BlockingQueue<Message> queue = new LinkedBlockingQueue(32);
-    public static final Map<String, Message> messages = new ConcurrentHashMap<>();
+    public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
+    public static final Map<String, Message> MESSAGES = new ConcurrentHashMap<>();
 
     private final Compressor compressor = new Compressor();
 
@@ -34,63 +36,100 @@ public class SerialWorker {
         String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля. " +
                 "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
         Message message = Message.builder().topic(topic).user(user).text(text).dateTime(LocalDateTime.now()).build();
-        queue.offer(message);
-        SerialWorker serialWorker = new SerialWorker();
-        serialWorker.sendMessage();
+        OUT_QUEUE.offer(message);
+        new SerialWorker().run();
 
 //        Compressor compressor = new Compressor();
 //        byte [] compressed = compressor.compress(text.getBytes());
 //        byte [] decompressed = compressor.decompress(compressed);
 //        log.info("res = {}", new String(decompressed));
-
     }
 
-    public void sendMessage() throws IOException, InterruptedException {
-        Message message = queue.poll();
-        if (message != null) {
-            int seconds = toSeconds(message.getDateTime());
-            byte[] bytesCurrentDateTime = toByteArray(seconds);
-            String textToSend = getTextToSend(message);
-            byte [] stringBytesToSend = textToSend.getBytes();
-            byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
-            byte [] compressedBytes = compressor.compress(bytesToSend);
-            log.info("Sending [{}] compressed bytes:", compressedBytes.length);
-            NRSerialPort serial = new NRSerialPort(port, baudRate);
-            serial.connect();
-            BufferedOutputStream out = IOUtils.buffer(serial.getOutputStream());
-            for (int i = 0; i < timesToSend; i++) {
-                long start = System.currentTimeMillis();
-                out.write(compressedBytes);
-                out.flush();
-                if (!message.isSent()) {
-                    message.setSent(true);
+    public void run() {
+        NRSerialPort serial = new NRSerialPort(SERIAL_PORT, BAUD_RATE);
+        serial.connect();
+        BufferedOutputStream serialOutputStream = IOUtils.buffer(serial.getOutputStream());
+        BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
+        new Thread(() -> {
+            receiveMessages(serialInputStream);
+        }).start();
+        new Thread(() -> {
+            sendMessages(serialOutputStream);
+        }).start();
+
+        serial.disconnect();
+    }
+
+    public void sendMessages(BufferedOutputStream serialOutputStream) {
+        while (true) {
+            try {
+                Message message = OUT_QUEUE.poll();
+                if (message != null) {
+                    int seconds = toSeconds(message.getDateTime());
+                    byte[] bytesCurrentDateTime = toByteArray(seconds);
+                    String textToSend = getTextToSend(message);
+                    byte[] stringBytesToSend = textToSend.getBytes();
+                    byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
+                    byte[] compressedBytes = compressor.compress(bytesToSend);
+                    log.info("Sending [{}] compressed bytes:", compressedBytes.length);
+                    for (int i = 0; i < TIMES_TO_SEND_ONE_MESSAGE; i++) {
+                        long start = System.currentTimeMillis();
+                        serialOutputStream.write(compressedBytes);
+                        serialOutputStream.flush();
+                        if (!message.isSent()) {
+                            message.setSent(true);
+                            MESSAGES.put(message.getTopic(), message);//TODO move to controller/service
+                        }
+                        log.info("Sent [{}] compressed bytes in [{}] ms",
+                            compressedBytes.length, (System.currentTimeMillis() - start));
+                        Thread.sleep(TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE);
+                    }
                 }
-                log.info("Sent [{}] compressed bytes in [{}] ms",
-                        compressedBytes.length, (System.currentTimeMillis() - start));
-                Thread.sleep(timeoutMs);
+                Thread.sleep(TIMEOUT_BETWEEN_SENDING);
+            } catch (IOException e) {
+                log.error("IOException while sending", e);
+            } catch (InterruptedException e) {
+                log.error("InterruptedException while sending", e);
             }
-            serial.disconnect();
         }
     }
 
-    public void receiveMessage() throws IOException, DataFormatException {
-        NRSerialPort serial = new NRSerialPort(port, baudRate);
-        serial.connect();
-        BufferedInputStream in = IOUtils.buffer(serial.getInputStream());
-        byte [] bytesInRaw = new byte[256];
-        int incomingLength = in.read(bytesInRaw, 0 , 256);
-        byte [] bytesReceived = new byte[incomingLength];
-        System.arraycopy(bytesInRaw, 0 , bytesReceived, 0 , incomingLength);
-        byte [] decompressedBytes = compressor.decompress(bytesReceived);
-        int seconds = fromByteArray(decompressedBytes, 0, 4);
-        LocalDateTime dateTime = fromSeconds(seconds);
-        log.info("Received [{}] bytes:", decompressedBytes.length - 4);
-        String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
-        //TODO parse
+    public void receiveMessages(BufferedInputStream serialInputStream) {
+        while (true) {
+            try {
+                if (serialInputStream.available() > 0) {
+                    byte [] bytesInRaw = new byte[256];
+                    int incomingLength = serialInputStream.read(bytesInRaw, 0 , 256);
+                    log.info("Received new message, size [{}] bytes", incomingLength);
+                    byte [] bytesReceived = new byte[incomingLength];
+                    System.arraycopy(bytesInRaw, 0 , bytesReceived, 0 , incomingLength);
+                    byte [] decompressedBytes = compressor.decompress(bytesReceived);
+                    int seconds = fromByteArray(decompressedBytes, 0, 4);
+                    log.info("Decompressed size [{}] bytes", decompressedBytes.length);
+                    String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
+                    Message message = reconstructMessage(receivedText, seconds);
+                    MESSAGES.put(message.getTopic(), message);
+                }
+                Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
+            } catch (IOException e) {
+                log.error("IOException while receiving", e);
+            } catch (DataFormatException e) {
+                log.error("DataFormatException while receiving", e);
+            } catch (InterruptedException e) {
+                log.error("InterruptedException while receiving", e);
+            }
+        }
+    }
 
-        Message message = Message.builder().received(true).dateTime(dateTime).build();
-        messages.put(message.getTopic(), message);
-        serial.disconnect();
+    private Message reconstructMessage(String receivedText, int seconds) {
+        String [] split1 = receivedText.split(":", 2);
+        String topic = split1[0];
+        String [] split2 = split1[1].split(":", 2);
+        String user = split2[0];
+        String text = split2[1];
+        LocalDateTime dateTime = fromSeconds(seconds);
+        return Message.builder().received(true).dateTime(dateTime)
+            .topic(topic).user(user).text(text).build();
     }
 
     private String getTextToSend(Message message) {
