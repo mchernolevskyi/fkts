@@ -20,12 +20,12 @@ import org.apache.commons.lang3.ArrayUtils;
 
 @Slf4j
 public class SerialWorker implements Runnable {
-    private static final String SERIAL_PORT = "COM4";
+    private static final String SERIAL_PORT = "COM5";
     private static final int BAUD_RATE = 9600;
     private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
-    private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 1000;
-    private static final long TIMEOUT_BETWEEN_SENDING = 2000;
-    private static final long TIMEOUT_BETWEEN_RECEIVING = 100;
+    private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
+    private static final long TIMEOUT_BETWEEN_SENDING = 5000;
+    private static final long TIMEOUT_BETWEEN_RECEIVING = 500;
 
     public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
     public static final Map<String, Message> MESSAGES = new ConcurrentHashMap<>();
@@ -39,29 +39,33 @@ public class SerialWorker implements Runnable {
         while (true) {
             String topic = "/Україна/Київ/балачки";
             String user = "Все буде Україна!";
-            String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля. " +
+            String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
                     "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці: " + i++;
             Message message = Message.builder().topic(topic).user(user).text(text).dateTime(LocalDateTime.now()).build();
             OUT_QUEUE.offer(message);
-            Thread.sleep(3000);
+            Thread.sleep(10000);
         }
     }
 
     public void run() {
         NRSerialPort serial = new NRSerialPort(SERIAL_PORT, BAUD_RATE);
-        serial.connect();
-        BufferedOutputStream serialOutputStream = IOUtils.buffer(serial.getOutputStream());
-        BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
         new Thread(() -> {
-            receiveMessages(serialInputStream);
+            receiveMessages(serial);
         }).start();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         new Thread(() -> {
-            sendMessages(serialOutputStream);
+            sendMessages(serial);
         }).start();
-        serial.disconnect();
+//        serial.disconnect();
     }
 
-    public void sendMessages(BufferedOutputStream serialOutputStream) {
+    public void sendMessages(NRSerialPort serial) {
+        //serial.connect();
+        BufferedOutputStream serialOutputStream = IOUtils.buffer(serial.getOutputStream());
         while (true) {
             try {
                 Message message = OUT_QUEUE.poll();
@@ -85,6 +89,7 @@ public class SerialWorker implements Runnable {
                             compressedBytes.length, (System.currentTimeMillis() - start));
                         Thread.sleep(TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE);
                     }
+                    serialOutputStream.close();
                 }
                 Thread.sleep(TIMEOUT_BETWEEN_SENDING);
             } catch (IOException e) {
@@ -97,10 +102,12 @@ public class SerialWorker implements Runnable {
         }
     }
 
-    public void receiveMessages(BufferedInputStream serialInputStream) {
+    public void receiveMessages(NRSerialPort serial) {
+        serial.connect();
+        BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
         while (true) {
             try {
-                if (serialInputStream.available() > 0) {
+                if (serialInputStream.available() > 10) {
                     byte [] bytesInRaw = new byte[256];
                     int incomingLength = serialInputStream.read(bytesInRaw, 0 , 256);
                     log.info("Received new message, size [{}] bytes", incomingLength);
@@ -109,6 +116,7 @@ public class SerialWorker implements Runnable {
                     byte [] decompressedBytes = compressor.decompress(bytesReceived);
                     int seconds = fromByteArray(decompressedBytes, 0, 4);
                     log.info("Decompressed size [{}] bytes", decompressedBytes.length);
+                    log.info("Raw received text: [{}]", new String(decompressedBytes));
                     String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
                     Message message = reconstructMessage(receivedText, seconds);
                     MESSAGES.put(message.getTopic(), message);

@@ -1,5 +1,8 @@
+import org.gradle.jvm.tasks.Jar
+
 plugins {
     java
+    idea
 }
 
 java {
@@ -17,6 +20,24 @@ dependencies {
     implementation("org.apache.commons:commons-lang3:3.9")
     implementation("org.slf4j:slf4j-simple:1.7.26")
     compileOnly("org.projectlombok:lombok:1.18.8")
+    //annotationProcessor("org.projectlombok:lombok:1.18.8")
+}
+
+val fatJar = task("fatJar", type = Jar::class) {
+    baseName = "${project.name}-fat"
+    manifest {
+        attributes["Implementation-Title"] = "FKTS"
+        attributes["Implementation-Version"] = 0.1
+        attributes["Main-Class"] = "makswinner.fkts.SerialWorker"
+    }
+    from(configurations.runtimeClasspath.get().map({ if (it.isDirectory) it else zipTree(it) }))
+    with(tasks.jar.get() as CopySpec)
+}
+
+tasks {
+    "build" {
+        dependsOn(fatJar)
+    }
 }
 
 version = "1.2.1"
