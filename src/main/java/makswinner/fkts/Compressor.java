@@ -35,13 +35,13 @@ public class Compressor {
   }
 
   public byte [] compress(byte [] input, Method method) {
-    log.info("Compression start: method [{}], input of [{}] bytes", method, input.length);
+    log.debug("Compression start: method [{}], input of [{}] bytes", method, input.length);
     byte [] result;
     switch(method) {
       case DEFLATE: result = compressDeflate(input); break;
       default: throw new RuntimeException("Compression method not supported");
     }
-    log.info("Compression end: method [{}], compressed size [{}] bytes", method, result.length);
+    log.debug("Compression end: method [{}], compressed size [{}] bytes", method, result.length);
     return result;
   }
 
@@ -50,13 +50,13 @@ public class Compressor {
   }
 
   public byte [] decompress(byte [] input, Method method) throws DataFormatException {
-    log.info("Decompression start: method [{}], input of [{}] bytes", method, input.length);
+    log.debug("Decompression start: method [{}], input of [{}] bytes", method, input.length);
     byte [] result;
     switch(method) {
       case DEFLATE: result = decompressDeflate(input); break;
       default: throw new RuntimeException("Compression method not supported");
     }
-    log.info("Decompression end: method [{}], decompressed size [{}] bytes", method, result.length);
+    log.debug("Decompression end: method [{}], decompressed size [{}] bytes", method, result.length);
     return result;
   }
 

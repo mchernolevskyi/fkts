@@ -22,13 +22,14 @@ import org.apache.commons.lang3.ArrayUtils;
 public class SerialWorker implements Runnable {
     private static final String SERIAL_PORT = "COM5";
     private static final int BAUD_RATE = 9600;
-    private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
+    private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
     private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
     private static final long TIMEOUT_BETWEEN_SENDING = 5000;
     private static final long TIMEOUT_BETWEEN_RECEIVING = 500;
 
     public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
     public static final Map<String, Message> MESSAGES = new ConcurrentHashMap<>();
+    public static final int LORA_PACKET_SIZE = 256;
 
     private final Compressor compressor = new Compressor();
 
@@ -76,7 +77,7 @@ public class SerialWorker implements Runnable {
                     byte[] stringBytesToSend = textToSend.getBytes();
                     byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
                     byte[] compressedBytes = compressor.compress(bytesToSend);
-                    log.info("Sending [{}] compressed bytes:", compressedBytes.length);
+                    log.info("Sending [{}] compressed bytes: [{}]", compressedBytes.length, compressedBytes);
                     for (int i = 0; i < TIMES_TO_SEND_ONE_MESSAGE; i++) {
                         long start = System.currentTimeMillis();
                         serialOutputStream.write(compressedBytes);
@@ -107,20 +108,23 @@ public class SerialWorker implements Runnable {
         BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
         while (true) {
             try {
-                if (serialInputStream.available() > 10) {
-                    byte [] bytesInRaw = new byte[256];
-                    int incomingLength = serialInputStream.read(bytesInRaw, 0 , 256);
+                if (serialInputStream.available() >= 10) {
+                    byte [] bytesInRaw = new byte[LORA_PACKET_SIZE];
+                    int incomingLength = serialInputStream.read(bytesInRaw, 0 , LORA_PACKET_SIZE);
                     log.info("Received new message, size [{}] bytes", incomingLength);
-                    byte [] bytesReceived = new byte[incomingLength];
-                    System.arraycopy(bytesInRaw, 0 , bytesReceived, 0 , incomingLength);
-                    byte [] decompressedBytes = compressor.decompress(bytesReceived);
-                    int seconds = fromByteArray(decompressedBytes, 0, 4);
-                    log.info("Decompressed size [{}] bytes", decompressedBytes.length);
-                    log.info("Raw received text: [{}]", new String(decompressedBytes));
-                    String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
-                    Message message = reconstructMessage(receivedText, seconds);
-                    MESSAGES.put(message.getTopic(), message);
-                    log.info("Message: [{}]", message);
+                    if (bytesInRaw[0] == (byte) 85 && bytesInRaw[2] == (byte) -113) {
+                        byte [] decompressedBytes = compressor.decompress(bytesInRaw);
+                        int seconds = fromByteArray(decompressedBytes, 0, 4);
+                        log.info("Decompressed size [{}] bytes", decompressedBytes.length);
+                        log.info("Raw received text: [{}]", new String(decompressedBytes));
+                        String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
+                        Message message = reconstructMessage(receivedText, seconds);
+                        MESSAGES.put(message.getTopic(), message);
+                        log.info("Message: [{}]", message);
+                    } else {
+                        log.info("Partly received message [{}]", bytesInRaw);
+                    }
+
                 }
                 Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
             } catch (IOException e) {
