@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,7 +29,7 @@ public class SerialWorker implements Runnable {
     private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
 
     public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
-    public static final Map<String, Message> MESSAGES = new ConcurrentHashMap<>();
+    public static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
     public static final int LORA_PACKET_SIZE = 256;
 
     private final Compressor compressor = new Compressor();
@@ -83,7 +84,9 @@ public class SerialWorker implements Runnable {
                         serialOutputStream.flush();
                         if (!message.isSent()) {
                             message.setSent(true);
-                            MESSAGES.put(message.getTopic(), message);//TODO move to controller/service
+                            Set<Message> topicMessages = MESSAGES.get(message.getTopic());
+                            topicMessages.add(message);
+                            MESSAGES.put(message.getTopic(), topicMessages);//TODO move to controller/service
                         }
                         log.info("Sent [{}] compressed bytes in [{}] ms",
                             compressedBytes.length, (System.currentTimeMillis() - start));
@@ -106,19 +109,24 @@ public class SerialWorker implements Runnable {
         serial.connect();
         BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
         while (true) {
+          byte [] longByteArray = new byte[10000];
+          int longByteArrayOffset = 0;
             try {
                 if (serialInputStream.available() >= 10) {
                     byte [] bytesInRaw = new byte[LORA_PACKET_SIZE];
                     int incomingLength = serialInputStream.read(bytesInRaw, 0 , LORA_PACKET_SIZE);
                     log.info("Received new message, size [{}] bytes", incomingLength);
-                    if (bytesInRaw[0] == (byte) 85 && bytesInRaw[2] == (byte) -113) {
+                    System.arraycopy(bytesInRaw,0 , longByteArray, longByteArrayOffset, incomingLength);
+                    if (longByteArrayHasMessage(longByteArray, longByteArrayOffset)) {
                         byte [] decompressedBytes = compressor.decompress(bytesInRaw);
                         int seconds = fromByteArray(decompressedBytes, 0, 4);
                         log.info("Decompressed size [{}] bytes", decompressedBytes.length);
                         log.info("Raw received text: [{}]", new String(decompressedBytes));
                         String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
                         Message message = reconstructMessage(receivedText, seconds);
-                        MESSAGES.put(message.getTopic(), message);
+                        Set<Message> topicMessages = MESSAGES.get(message.getTopic());
+                        topicMessages.add(message);
+                        MESSAGES.put(message.getTopic(), topicMessages);
                         log.info("Message: [{}]", message);
                     } else {
                         log.info("Partly received message [{}]", bytesInRaw);
@@ -138,7 +146,11 @@ public class SerialWorker implements Runnable {
         }
     }
 
-    private Message reconstructMessage(String receivedText, int seconds) {
+  private boolean longByteArrayHasMessage(byte[] longByteArray, int longByteArrayOffset) {
+    return longByteArray[longByteArrayOffset] == (byte) 85 && longByteArray[longByteArrayOffset + 1] == (byte) -113;
+  }
+
+  private Message reconstructMessage(String receivedText, int seconds) {
         String [] split1 = receivedText.split(":", 2);
         String topic = split1[0];
         String [] split2 = split1[1].split(":", 2);
