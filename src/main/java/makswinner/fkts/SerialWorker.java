@@ -25,7 +25,7 @@ public class SerialWorker implements Runnable {
     private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
     private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
     private static final long TIMEOUT_BETWEEN_SENDING = 5000;
-    private static final long TIMEOUT_BETWEEN_RECEIVING = 500;
+    private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
 
     public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
     public static final Map<String, Message> MESSAGES = new ConcurrentHashMap<>();
@@ -54,14 +54,13 @@ public class SerialWorker implements Runnable {
             receiveMessages(serial);
         }).start();
         try {
-            Thread.sleep(1000);
+            Thread.sleep(TIMEOUT_BETWEEN_RECEIVING * 3);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         new Thread(() -> {
             sendMessages(serial);
         }).start();
-//        serial.disconnect();
     }
 
     public void sendMessages(NRSerialPort serial) {
