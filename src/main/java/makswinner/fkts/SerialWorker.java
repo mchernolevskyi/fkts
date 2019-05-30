@@ -7,6 +7,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.zip.Checksum;
 import java.util.zip.DataFormatException;
 import lombok.Builder;
 import lombok.Getter;

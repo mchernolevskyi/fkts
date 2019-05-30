@@ -23,4 +23,14 @@ public class Util {
   public static int fromByteArray(byte[] bytes, int offset, int length) {
     return ByteBuffer.wrap(bytes, offset, length).getInt();
   }
+
+  public static short computeBsdChecksumShort(byte[] bytes) {
+    int result = 0;
+    for (byte current : bytes) {
+      result = (result >>> 1) + ((result & 1) << 15);
+      result += current;
+      result &= 0xffff;
+    }
+    return (short) result;
+  }
 }
