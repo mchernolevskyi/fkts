@@ -133,7 +133,8 @@ public class SerialWorker implements Runnable {
             Set<Message> topicMessages = MESSAGES.get(message.getTopic());
             topicMessages.add(message);
           } else {
-            log.info("Partly received message, current array size has size [{}] bytes, could not extract message", longByteArrayOffset);
+            log.info("Partly received message, current array size has size [{}] bytes, could not extract message",
+                longByteArrayOffset);
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
@@ -188,7 +189,8 @@ public class SerialWorker implements Runnable {
     } else {
       receivedBytes = Arrays.copyOf(receivedBytes, receivedBytes.length - 2);
     }
-    return ExtractedMessage.builder().receivedBytes(receivedBytes).noTrailingBytes(noTrailingBytes).messageEnd(messageEnd).build();
+    return ExtractedMessage.builder()
+        .receivedBytes(receivedBytes).noTrailingBytes(noTrailingBytes).messageEnd(messageEnd).build();
   }
 
   private int findMessageStart(byte[] bytes, int start, Integer end) {
