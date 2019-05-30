@@ -120,7 +120,7 @@ public class SerialWorker implements Runnable {
   @Builder
   private static  class ExtractedMessage {
     byte [] receivedBytes;
-    boolean hasTrailingBytes;
+    boolean noTrailingBytes;
   }
 
   public void receiveMessages(NRSerialPort serial) {
@@ -137,6 +137,8 @@ public class SerialWorker implements Runnable {
                     System.arraycopy(bytesInRaw,0 , longByteArray, longByteArrayOffset, incomingLength);
                     ExtractedMessage extractedMessage = extractReceivedBytes(longByteArray, longByteArrayOffset);
                     if (extractedMessage.getReceivedBytes() != null) {
+                        longByteArrayOffset = 0;
+                        longByteArray = new byte[10000];
                         byte [] receivedBytes = extractedMessage.getReceivedBytes();
                         byte [] decompressedBytes = compressor.decompress(receivedBytes);
                         int seconds = fromByteArray(decompressedBytes, 0, 4);
@@ -166,9 +168,21 @@ public class SerialWorker implements Runnable {
         }
     }
 
-  private ExtractedMessage extractReceivedBytes(byte[] longByteArray, int longByteArrayOffset) {
-
-      return ExtractedMessage.builder().build();
+  private ExtractedMessage extractReceivedBytes(byte[] bytes, int longByteArrayOffset) {
+      int start = findMessageStart(bytes);
+      int end = findMessageEnd(bytes);
+      byte [] receivedBytes = null;
+      boolean noTrailingBytes = false;
+      if (start >= 0 && end > start) {
+        receivedBytes = new byte[end - start];
+        System.arraycopy(bytes, start, receivedBytes, 0, end - start);
+        if (!isMessageEnd(receivedBytes, receivedBytes.length - 2)) {
+          noTrailingBytes = true;
+        } else {
+          //TODO truncate message
+        }
+      }
+      return ExtractedMessage.builder().receivedBytes(receivedBytes).noTrailingBytes(noTrailingBytes).build();
   }
 
   private boolean isMessageStart(byte[] bytes, int offset) {
