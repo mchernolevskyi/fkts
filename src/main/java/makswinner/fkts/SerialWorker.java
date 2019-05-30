@@ -72,7 +72,7 @@ public class SerialWorker implements Runnable {
           byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
           byte[] compressedBytes = compressor.compress(bytesToSend);
           byte[] compressedBytesWithTrailingBytes = addTrailingBytes(compressedBytes);
-          log.info("Sending [{}] compressed bytes with trailing bytes: [{}]",
+          log.info("Sending [{}] compressed bytes with trailing bytes, bytes are [{}]",
               compressedBytesWithTrailingBytes.length, compressedBytesWithTrailingBytes);
           for (int i = 0; i < TIMES_TO_SEND_ONE_MESSAGE; i++) {
             long start = System.currentTimeMillis();
@@ -114,32 +114,26 @@ public class SerialWorker implements Runnable {
     serial.connect();
     BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
     Integer longByteArrayOffset = 0;
-    byte[] longByteArray = new byte[10000];
+    byte[] longByteArray = new byte[1024];
     while (true) {
       try {
         if (serialInputStream.available() >= 10) {
           byte[] bytesInRaw = new byte[MAX_PACKET_SIZE];
           int incomingLength = serialInputStream.read(bytesInRaw, 0, MAX_PACKET_SIZE);
-          log.info("Received new [{}] bytes", incomingLength);
+          log.info("Received [{}] bytes, bytes are [{}]", incomingLength, bytesInRaw);
           System.arraycopy(bytesInRaw, 0, longByteArray, longByteArrayOffset, incomingLength);
           longByteArrayOffset += incomingLength;
+          log.info("Current array has size [{}] bytes, bytes are [{}]", longByteArrayOffset, longByteArray);
           ExtractedMessage extractedMessage = extractReceivedBytes(longByteArray, longByteArrayOffset);
           if (extractedMessage != null) {
-            updateRollingArray(longByteArrayOffset, longByteArray, extractedMessage);
+            updateRollingArray(longByteArrayOffset, longByteArray, extractedMessage.getMessageEnd());
             longByteArrayOffset = 0;
-            byte[] receivedBytes = extractedMessage.getReceivedBytes();
-            log.info("Extracted new message of [{}] bytes", receivedBytes.length);
-            byte[] decompressedBytes = compressor.decompress(receivedBytes);
-            log.info("Decompressed size [{}] bytes", decompressedBytes.length);
-            int seconds = fromByteArray(decompressedBytes, 0, 4);
-            String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
-            log.info("Received text: [{}]", receivedText);
-            Message message = Message.of(receivedText, seconds, extractedMessage.isNoTrailingBytes());
+            Message message = getMessageFromExtractedMessage(extractedMessage);
+            log.info("Message is [{}]", message);
             Set<Message> topicMessages = MESSAGES.get(message.getTopic());
             topicMessages.add(message);
-            log.info("Message: [{}]", message);
           } else {
-            log.info("Partly received message, current size is [{}] bytes, could not extract message", longByteArrayOffset);
+            log.info("Partly received message, current array size has size [{}] bytes, could not extract message", longByteArrayOffset);
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
@@ -155,9 +149,20 @@ public class SerialWorker implements Runnable {
     }
   }
 
-  private void updateRollingArray(Integer longByteArrayOffset, byte[] longByteArray, ExtractedMessage extractedMessage) {
-    Arrays.copyOfRange(longByteArray, extractedMessage.getMessageEnd(), longByteArrayOffset);
-    Arrays.fill(longByteArray, longByteArrayOffset - extractedMessage.getMessageEnd(), longByteArray.length - 1, (byte) 0);
+  private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException {
+    byte[] receivedBytes = extractedMessage.getReceivedBytes();
+    log.info("Extracted message has [{}] bytes", receivedBytes.length);
+    byte[] decompressedBytes = compressor.decompress(receivedBytes);
+    log.info("Decompressed size is [{}] bytes", decompressedBytes.length);
+    int seconds = fromByteArray(decompressedBytes, 0, 4);
+    String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
+    log.info("Received text is [{}]", receivedText);
+    return Message.of(receivedText, seconds, extractedMessage.isNoTrailingBytes());
+  }
+
+  private void updateRollingArray(Integer longByteArrayOffset, byte[] longByteArray, int messageEnd) {
+    Arrays.copyOfRange(longByteArray, messageEnd, longByteArrayOffset);
+    Arrays.fill(longByteArray, longByteArrayOffset - messageEnd, longByteArray.length - 1, (byte) 0);
   }
 
   private ExtractedMessage extractReceivedBytes(byte[] longByteArray, Integer longByteArrayOffset) {
@@ -199,7 +204,7 @@ public class SerialWorker implements Runnable {
     int result = -1;
     for (int i = start; i < end - 2; i++) {
       if (isMessageEnd(bytes, i)) {
-        return i;
+        return i + 2;
       }
     }
     if (result == -1) {
