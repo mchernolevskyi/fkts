@@ -7,7 +7,6 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.zip.Checksum;
 import java.util.zip.DataFormatException;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +17,7 @@ import org.apache.commons.lang3.ArrayUtils;
 @Slf4j
 public class SerialWorker implements Runnable {
 
-  private static final String SERIAL_PORT = "COM5";
+  private static final String DEFAULT_SERIAL_PORT = "COM5";
   private static final int BAUD_RATE = 9600;
   private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
@@ -31,8 +30,14 @@ public class SerialWorker implements Runnable {
 
   private final Compressor compressor = new Compressor();
 
+  private String serialPort;
+
+  public SerialWorker(String serialPort) {
+      this.serialPort = serialPort;
+  }
+
   public static void main(String[] args) throws Exception {
-    new Thread(new SerialWorker()).start();
+    new Thread(new SerialWorker(args.length > 0 ? args[0] : null)).start();
 
     int i = 0;
     while (true) {
@@ -47,12 +52,12 @@ public class SerialWorker implements Runnable {
   }
 
   public void run() {
-    NRSerialPort serial = new NRSerialPort(SERIAL_PORT, BAUD_RATE);
+    NRSerialPort serial = new NRSerialPort(serialPort == null ? DEFAULT_SERIAL_PORT : serialPort, BAUD_RATE);
     new Thread(() -> {
       receiveMessages(serial);
     }).start();
     try {
-      Thread.sleep(TIMEOUT_BETWEEN_RECEIVING * 3);
+      Thread.sleep(TIMEOUT_BETWEEN_RECEIVING * 5);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -70,6 +75,7 @@ public class SerialWorker implements Runnable {
         if (message != null) {
           byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getDateTime()));
           byte[] stringBytesToSend = message.getTextToSend().getBytes();
+          log.info("Sending message [{}]", message.getTextToSend());
           byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
           byte[] compressedBytes = compressor.compress(bytesToSend);
           byte[] compressedBytesWithTrailingBytes = addTrailingBytes(compressedBytes);
@@ -84,6 +90,9 @@ public class SerialWorker implements Runnable {
             } else {
               message.setSent(true);
               Set<Message> topicMessages = MESSAGES.get(message.getTopic());
+              if (topicMessages == null) {
+                  topicMessages = new HashSet<>();
+              }
               topicMessages.add(message);
               MESSAGES.put(message.getTopic(), topicMessages);//TODO move to controller/service
             }
@@ -128,13 +137,17 @@ public class SerialWorker implements Runnable {
           ExtractedMessage extractedMessage = extractReceivedBytes(longByteArray, longByteArrayOffset);
           if (extractedMessage != null) {
             updateRollingArray(longByteArrayOffset, longByteArray, extractedMessage.getMessageEnd());
-            longByteArrayOffset = 0;
+            longByteArrayOffset -= extractedMessage.getMessageEnd() - 1;
+              log.info("Received message, truncated array now has size [{}] bytes", longByteArrayOffset);
             Message message = getMessageFromExtractedMessage(extractedMessage);
             log.info("Message is [{}]", message);
             Set<Message> topicMessages = MESSAGES.get(message.getTopic());
+            if (topicMessages == null) {
+              topicMessages = new HashSet<>();
+            }
             topicMessages.add(message);
           } else {
-            log.info("Partly received message, current array size has size [{}] bytes, could not extract message",
+            log.info("Partly received message, current array has size [{}] bytes, could not extract message",
                 longByteArrayOffset);
           }
         }
@@ -158,7 +171,7 @@ public class SerialWorker implements Runnable {
     log.info("Decompressed size is [{}] bytes", decompressedBytes.length);
     int seconds = fromByteArray(decompressedBytes, 0, 4);
     String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
-    log.info("Received text is [{}]", receivedText);
+    log.info("!!!!! Received text is [{}]", receivedText);
     return Message.of(receivedText, seconds, extractedMessage.isNoTrailingBytes());
   }
 
@@ -222,14 +235,14 @@ public class SerialWorker implements Runnable {
   }
 
   private boolean isMessageEnd(byte[] bytes, int offset) {
-    return bytes[offset] == (byte) -254 && bytes[offset + 1] == (byte) -253;
+    return bytes[offset] == (byte) -128 && bytes[offset + 1] == (byte) -127;
   }
 
   private byte[] addTrailingBytes(byte[] compressedBytes) {
     byte[] bytesToSendWithTrailingBytes = new byte[compressedBytes.length + 2];
     System.arraycopy(compressedBytes, 0, bytesToSendWithTrailingBytes, 0, compressedBytes.length);
-    bytesToSendWithTrailingBytes[compressedBytes.length] = (byte) -254;
-    bytesToSendWithTrailingBytes[compressedBytes.length + 1] = (byte) -253;
+    bytesToSendWithTrailingBytes[compressedBytes.length] = (byte) -128;
+    bytesToSendWithTrailingBytes[compressedBytes.length + 1] = (byte) -127;
     return bytesToSendWithTrailingBytes;
   }
 
