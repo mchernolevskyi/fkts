@@ -18,6 +18,7 @@ public class Message {
     private String text;
     private boolean sent;
     private boolean received;
+    private boolean noTrailingBytes;
 
     @Override
     public String toString() {
