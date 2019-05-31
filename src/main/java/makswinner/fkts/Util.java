@@ -24,13 +24,13 @@ public class Util {
     return ByteBuffer.wrap(bytes, offset, length).getInt();
   }
 
-  public static short computeBsdChecksumShort(byte[] bytes) {
-    int result = 0;
-    for (byte current : bytes) {
-      result = (result >>> 1) + ((result & 1) << 15);
-      result += current;
-      result &= 0xffff;
+  public static byte checksum(byte[] bytes) {
+    byte checksum = 0;
+    for (byte cur_byte : bytes) {
+      checksum = (byte) (((checksum & 0xFF) >>> 1) + ((checksum & 0x1) << 7)); // Rotate the accumulator
+      checksum = (byte) ((checksum + cur_byte) & 0xFF);                        // Add the next chunk
     }
-    return (short) result;
+    return checksum;
   }
+
 }

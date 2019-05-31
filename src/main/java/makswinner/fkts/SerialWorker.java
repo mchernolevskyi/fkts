@@ -118,6 +118,7 @@ public class SerialWorker implements Runnable {
     private byte[] receivedBytes;
     private boolean noTrailingBytes;
     private int messageEnd;
+    private boolean checksumOk;
   }
 
   public void receiveMessages(NRSerialPort serial) {
@@ -196,19 +197,23 @@ public class SerialWorker implements Runnable {
       byte[] longByteArray, int messageStart, int messageEnd) {
     byte[] receivedBytes = null;
     boolean noTrailingBytes = false;
+    boolean checksumOk = false;
     receivedBytes = new byte[messageEnd - messageStart];
     System.arraycopy(longByteArray, messageStart, receivedBytes, 0, messageEnd - messageStart);
     if (!isMessageEnd(receivedBytes, receivedBytes.length - 2)) {
       noTrailingBytes = true;
     } else {
-      receivedBytes = Arrays.copyOf(receivedBytes, receivedBytes.length - 2);
+      byte checksumRemote = receivedBytes[receivedBytes.length - 2];
+      receivedBytes = Arrays.copyOf(receivedBytes, receivedBytes.length - 3);
+      checksumOk = checksumRemote == checksum(receivedBytes);
     }
     return ExtractedMessage.builder()
-        .receivedBytes(receivedBytes).noTrailingBytes(noTrailingBytes).messageEnd(messageEnd).build();
+        .receivedBytes(receivedBytes).noTrailingBytes(noTrailingBytes).messageEnd(messageEnd).checksumOk(checksumOk)
+        .build();
   }
 
-  private int findMessageStart(byte[] bytes, int start, Integer end) {
-    for (int i = start; i < end - 2; i++) {
+  private int findMessageStart(byte[] bytes, int start, int end) {
+    for (int i = start; i < end - 1; i++) {
       if (isMessageStart(bytes, i)) {
         return i;
       }
@@ -216,9 +221,9 @@ public class SerialWorker implements Runnable {
     return -1;
   }
 
-  private int findMessageEnd(byte[] bytes, int start, Integer end) {
+  private int findMessageEnd(byte[] bytes, int start, int end) {
     int result = -1;
-    for (int i = start; i < end - 2; i++) {
+    for (int i = start; i < end - 1; i++) {
       if (isMessageEnd(bytes, i)) {
         return i + 2;
       }
@@ -239,10 +244,11 @@ public class SerialWorker implements Runnable {
   }
 
   private byte[] addTrailingBytes(byte[] compressedBytes) {
-    byte[] bytesToSendWithTrailingBytes = new byte[compressedBytes.length + 2];
+    byte[] bytesToSendWithTrailingBytes = new byte[compressedBytes.length + 3];
     System.arraycopy(compressedBytes, 0, bytesToSendWithTrailingBytes, 0, compressedBytes.length);
-    bytesToSendWithTrailingBytes[compressedBytes.length] = (byte) -128;
-    bytesToSendWithTrailingBytes[compressedBytes.length + 1] = (byte) -127;
+    bytesToSendWithTrailingBytes[compressedBytes.length] = checksum(compressedBytes);
+    bytesToSendWithTrailingBytes[compressedBytes.length + 1] = (byte) -128;
+    bytesToSendWithTrailingBytes[compressedBytes.length + 2] = (byte) -127;
     return bytesToSendWithTrailingBytes;
   }
 
