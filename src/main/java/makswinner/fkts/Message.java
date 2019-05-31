@@ -2,9 +2,8 @@ package makswinner.fkts;
 
 import static makswinner.fkts.Util.fromSeconds;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.TimeZone;
+
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -16,13 +15,18 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 @Builder
 @EqualsAndHashCode
 public class Message {
-    private LocalDateTime dateTime;
+    private LocalDateTime createdDateTime;
     private String topic;
     private String user;
     private String text;
+
     private boolean sent;
+    private LocalDateTime sentDateTime;
+
     private boolean received;
     private boolean noTrailingBytes;
+    private boolean checksumOk;
+    private LocalDateTime receivedDateTime;
 
     @Override
     public String toString() {
@@ -33,15 +37,23 @@ public class Message {
         return getTopic() + ":" + getUser() + ":" + getText();
     }
 
-    public static Message of(String receivedText, int seconds, boolean noTrailingBytes) {
+    public static Message received(String receivedText, int seconds, boolean noTrailingBytes, boolean checksumOk) {
         String[] split1 = receivedText.split(":", 2);
         String topic = split1[0];
         String[] split2 = split1[1].split(":", 2);
         String user = split2[0];
         String text = split2[1];
         LocalDateTime dateTime = fromSeconds(seconds);
-        return Message.builder().received(true).dateTime(dateTime)
-            .topic(topic).user(user).text(text).noTrailingBytes(noTrailingBytes).build();
+        return Message.builder().received(true).createdDateTime(dateTime)
+            .topic(topic).user(user).text(text).noTrailingBytes(noTrailingBytes).checksumOk(checksumOk)
+                .receivedDateTime(LocalDateTime.now()).build();
+    }
+
+    public boolean contentEquals(Message other) {
+        return createdDateTime.equals(other.getCreatedDateTime()) &&
+                topic.equals(other.getTopic()) &&
+                user.equals(other.getUser()) &&
+                text.equals(other.getText());
     }
 
 }

@@ -7,6 +7,7 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 import java.util.zip.DataFormatException;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,7 +20,7 @@ public class SerialWorker implements Runnable {
 
   private static final String DEFAULT_SERIAL_PORT = "COM5";
   private static final int BAUD_RATE = 9600;
-  private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
+  private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
@@ -27,6 +28,7 @@ public class SerialWorker implements Runnable {
   public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
   public static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
   public static final int MAX_PACKET_SIZE = 256;
+  public static final int RECEIVE_BUFFER_SIZE = 1024;
 
   private final Compressor compressor = new Compressor();
 
@@ -43,9 +45,9 @@ public class SerialWorker implements Runnable {
     while (true) {
       String topic = "/Україна/Київ/балачки";
       String user = "Все буде Україна!";
-      String text = "Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
-          "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці: " + i++;
-      Message message = Message.builder().topic(topic).user(user).text(text).dateTime(LocalDateTime.now()).build();
+      String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
+          "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
+      Message message = Message.builder().topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now()).build();
       OUT_QUEUE.offer(message);
       Thread.sleep(10000);
     }
@@ -73,7 +75,7 @@ public class SerialWorker implements Runnable {
       try {
         Message message = OUT_QUEUE.poll();
         if (message != null) {
-          byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getDateTime()));
+          byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getCreatedDateTime()));
           byte[] stringBytesToSend = message.getTextToSend().getBytes();
           log.info("Sending message [{}]", message.getTextToSend());
           byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
@@ -85,10 +87,13 @@ public class SerialWorker implements Runnable {
             long start = System.currentTimeMillis();
             serialOutputStream.write(compressedBytesWithTrailingBytes);
             serialOutputStream.flush();
+            log.info("Sent [{}] bytes in [{}] ms",
+                    compressedBytesWithTrailingBytes.length, (System.currentTimeMillis() - start));
             if (message.isSent()) {
               Thread.sleep(TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE);
             } else {
               message.setSent(true);
+              message.setSentDateTime(LocalDateTime.now());
               Set<Message> topicMessages = MESSAGES.get(message.getTopic());
               if (topicMessages == null) {
                   topicMessages = new HashSet<>();
@@ -96,8 +101,6 @@ public class SerialWorker implements Runnable {
               topicMessages.add(message);
               MESSAGES.put(message.getTopic(), topicMessages);//TODO move to controller/service
             }
-            log.info("Sent [{}] bytes in [{}] ms",
-                compressedBytesWithTrailingBytes.length, (System.currentTimeMillis() - start));
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_SENDING);
@@ -125,7 +128,7 @@ public class SerialWorker implements Runnable {
     serial.connect();
     BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
     Integer longByteArrayOffset = 0;
-    byte[] longByteArray = new byte[1024];
+    byte[] longByteArray = new byte[RECEIVE_BUFFER_SIZE + MAX_PACKET_SIZE];
     while (true) {
       try {
         if (serialInputStream.available() >= 10) {
@@ -138,18 +141,35 @@ public class SerialWorker implements Runnable {
           ExtractedMessage extractedMessage = extractReceivedBytes(longByteArray, longByteArrayOffset);
           if (extractedMessage != null) {
             updateRollingArray(longByteArrayOffset, longByteArray, extractedMessage.getMessageEnd());
-            longByteArrayOffset -= extractedMessage.getMessageEnd() - 1;
-              log.info("Received message, truncated array now has size [{}] bytes", longByteArrayOffset);
+            longByteArrayOffset -= extractedMessage.getMessageEnd();
+              log.info("Received message, truncated array now has size [{}] bytes, bytes are [{}]",
+                      longByteArrayOffset, longByteArray);
             Message message = getMessageFromExtractedMessage(extractedMessage);
-            log.info("Message is [{}]", message);
+            log.info("Received message is [{}]", message);
             Set<Message> topicMessages = MESSAGES.get(message.getTopic());
             if (topicMessages == null) {
               topicMessages = new HashSet<>();
             }
-            topicMessages.add(message);
+            if (topicMessages.stream().anyMatch(m -> m.contentEquals(message))) {
+              log.info("!!! Got duplicated message [{}], not adding to topic", message);
+            } else {
+              topicMessages.add(message);
+              log.info("Topic has [{}] received messages [{}]",
+                      topicMessages.stream().filter(m -> m.isReceived()).count(),
+                      topicMessages.stream().filter(m -> m.isReceived())
+                              .collect(Collectors.toCollection(() -> new TreeSet<>(
+                                      Comparator.comparing(Message::getReceivedDateTime)))));
+            }
           } else {
-            log.info("Partly received message, current array has size [{}] bytes, could not extract message",
-                longByteArrayOffset);
+            log.info(
+                "Partly received message, current array has size [{}] bytes, could not extract message, bytes are [{}]",
+                longByteArrayOffset, longByteArray);
+          }
+          if (longByteArrayOffset > RECEIVE_BUFFER_SIZE) {
+            //something went so wrong
+            log.error("Buffer size is [{}], should never happen, discarding data", longByteArrayOffset);
+            longByteArrayOffset = 0;
+            longByteArray = new byte[RECEIVE_BUFFER_SIZE];
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
@@ -167,21 +187,26 @@ public class SerialWorker implements Runnable {
 
   private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException {
     byte[] receivedBytes = extractedMessage.getReceivedBytes();
-    log.info("Extracted message has [{}] bytes, checksum ok [{}]", receivedBytes.length, extractedMessage.isChecksumOk());
+    log.info("Extracted message without trailing bytes has [{}] bytes, checksum ok [{}], bytes are [{}]",
+            receivedBytes.length, extractedMessage.isChecksumOk(), extractedMessage.getReceivedBytes());
     byte[] decompressedBytes = compressor.decompress(receivedBytes);
-    log.info("Decompressed size is [{}] bytes", decompressedBytes.length);
+    log.info("Decompressed received message size is [{}] bytes", decompressedBytes.length);
     int seconds = fromByteArray(decompressedBytes, 0, 4);
     String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
-    log.info("!!!!! Received text is [{}]", receivedText);
-    return Message.of(receivedText, seconds, extractedMessage.isNoTrailingBytes());
+    log.info("Received text is [{}]", receivedText);
+    return Message.received(receivedText, seconds, extractedMessage.isNoTrailingBytes(), extractedMessage.isChecksumOk());
   }
 
-  private void updateRollingArray(Integer longByteArrayOffset, byte[] longByteArray, int messageEnd) {
+  private void updateRollingArray(int longByteArrayOffset, byte[] longByteArray, int messageEnd) {
+    log.info("updateRollingArray, longByteArrayOffset is [{}], messageEnd is [{}], bytes are [{}]",
+            longByteArrayOffset, messageEnd, longByteArray);
     Arrays.copyOfRange(longByteArray, messageEnd, longByteArrayOffset);
-    Arrays.fill(longByteArray, longByteArrayOffset - messageEnd, longByteArray.length - 1, (byte) 0);
+      log.info("updateRollingArray after truncate bytes are [{}]", longByteArray);
+      Arrays.fill(longByteArray, longByteArrayOffset - messageEnd, longByteArray.length - 1, (byte) 0);
+      log.info("updateRollingArray after fill bytes are [{}]", longByteArray);
   }
 
-  private ExtractedMessage extractReceivedBytes(byte[] longByteArray, Integer longByteArrayOffset) {
+  private ExtractedMessage extractReceivedBytes(byte[] longByteArray, int longByteArrayOffset) {
     int messageStart = findMessageStart(longByteArray, 0, longByteArrayOffset);
     int messageEnd = -1;
     if (messageStart >= 0) {
@@ -195,7 +220,7 @@ public class SerialWorker implements Runnable {
 
   private ExtractedMessage getExtractedMessage(
       byte[] longByteArray, int messageStart, int messageEnd) {
-    byte[] receivedBytes = null;
+    byte[] receivedBytes;
     boolean noTrailingBytes = false;
     boolean checksumOk = false;
     receivedBytes = new byte[messageEnd - messageStart];
@@ -203,7 +228,7 @@ public class SerialWorker implements Runnable {
     if (!isMessageEnd(receivedBytes, receivedBytes.length - 2)) {
       noTrailingBytes = true;
     } else {
-      byte checksumRemote = receivedBytes[receivedBytes.length - 2];
+      byte checksumRemote = receivedBytes[receivedBytes.length - 3];
       receivedBytes = Arrays.copyOf(receivedBytes, receivedBytes.length - 3);
       checksumOk = checksumRemote == checksum(receivedBytes);
     }
@@ -228,7 +253,7 @@ public class SerialWorker implements Runnable {
         return i + 2;
       }
     }
-    if (result == -1) {
+    if (result == -1 && end > MAX_PACKET_SIZE) {
       //try to find at least new message start
       result = findMessageStart(bytes, start, end);
     }
