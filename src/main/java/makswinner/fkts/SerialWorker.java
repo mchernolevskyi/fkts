@@ -167,7 +167,7 @@ public class SerialWorker implements Runnable {
 
   private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException {
     byte[] receivedBytes = extractedMessage.getReceivedBytes();
-    log.info("Extracted message has [{}] bytes", receivedBytes.length);
+    log.info("Extracted message has [{}] bytes, checksum ok [{}]", receivedBytes.length, extractedMessage.isChecksumOk());
     byte[] decompressedBytes = compressor.decompress(receivedBytes);
     log.info("Decompressed size is [{}] bytes", decompressedBytes.length);
     int seconds = fromByteArray(decompressedBytes, 0, 4);
