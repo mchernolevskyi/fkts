@@ -20,14 +20,14 @@ public class SerialWorker implements Runnable {
 
   private static final String DEFAULT_SERIAL_PORT = "COM5";
   private static final int BAUD_RATE = 9600;
-  private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
+  private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
 
   public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
   public static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
-  public static final int MAX_PACKET_SIZE = 256;
+  public static final int MAX_PACKET_SIZE = 222;
   public static final int RECEIVE_BUFFER_SIZE = 1024;
 
   private final Compressor compressor = new Compressor();
@@ -59,7 +59,7 @@ public class SerialWorker implements Runnable {
       receiveMessages(serial);
     }).start();
     try {
-      Thread.sleep(TIMEOUT_BETWEEN_RECEIVING * 5);
+      Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
@@ -128,10 +128,18 @@ public class SerialWorker implements Runnable {
     serial.connect();
     BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
     Integer longByteArrayOffset = 0;
-    byte[] longByteArray = new byte[RECEIVE_BUFFER_SIZE + MAX_PACKET_SIZE];
+    byte[] longByteArray = initLongByteArray();
     while (true) {
       try {
-        if (serialInputStream.available() >= 10) {
+        if (longByteArrayOffset > RECEIVE_BUFFER_SIZE) {
+          //something went so wrong
+          log.error("Buffer size is [{}], should never happen, discarding data", longByteArrayOffset);
+          longByteArrayOffset = 0;
+          longByteArray = initLongByteArray();
+        }
+        int available = serialInputStream.available();
+        //log.info("!!! Available [{}] bytes", available);
+        if (available > 0) {
           byte[] bytesInRaw = new byte[MAX_PACKET_SIZE];
           int incomingLength = serialInputStream.read(bytesInRaw, 0, MAX_PACKET_SIZE);
           log.info("Received [{}] bytes, bytes are [{}]", incomingLength, bytesInRaw);
@@ -165,12 +173,6 @@ public class SerialWorker implements Runnable {
                 "Partly received message, current array has size [{}] bytes, could not extract message, bytes are [{}]",
                 longByteArrayOffset, longByteArray);
           }
-          if (longByteArrayOffset > RECEIVE_BUFFER_SIZE) {
-            //something went so wrong
-            log.error("Buffer size is [{}], should never happen, discarding data", longByteArrayOffset);
-            longByteArrayOffset = 0;
-            longByteArray = new byte[RECEIVE_BUFFER_SIZE];
-          }
         }
         Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
       } catch (IOException e) {
@@ -183,6 +185,10 @@ public class SerialWorker implements Runnable {
         log.error("Undefined exception while receiving", e);
       }
     }
+  }
+
+  private byte[] initLongByteArray() {
+    return new byte[RECEIVE_BUFFER_SIZE + MAX_PACKET_SIZE * 2];
   }
 
   private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException {
