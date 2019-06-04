@@ -1,15 +1,6 @@
 package makswinner.fkts.service;
 
-import static makswinner.fkts.Util.*;
-
 import gnu.io.NRSerialPort;
-import java.io.*;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.stream.Collectors;
-import java.util.zip.DataFormatException;
-import javax.annotation.PostConstruct;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -20,11 +11,26 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
+import java.util.zip.DataFormatException;
+
+import static makswinner.fkts.Util.*;
+
 @Slf4j
 @Service
 public class SerialService {
 
-  private static final String DEFAULT_SERIAL_PORT = "COM5";
   private static final int BAUD_RATE = 9600;
   private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
@@ -44,9 +50,9 @@ public class SerialService {
   private void sendSomeMessages() throws Exception {
     int i = 0;
     while (true) {
-      String topic = "/" + ++i + "/Україна/Київ/балачки";
+      String topic = "/Україна/Київ/балачки";
       String user = "Все буде Україна!";
-      String text = " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
+      String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
           "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
       Message message = Message.builder().topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now()).build();
       OUT_QUEUE.offer(message);
@@ -57,8 +63,8 @@ public class SerialService {
 
   @PostConstruct
   public void init() {
-    NRSerialPort serial = new NRSerialPort(serialPort == null ? DEFAULT_SERIAL_PORT : serialPort, BAUD_RATE);
-    //log.info("Started serial service, serial port is [{}]", serial.getSerialPortInstance().getName());
+    NRSerialPort serial = new NRSerialPort(serialPort, BAUD_RATE);
+    log.info("Started serial service, serial port is [{}]", serialPort);
     new Thread(() -> {
       receiveMessages(serial);
     }).start();
@@ -90,12 +96,13 @@ public class SerialService {
         Message message = OUT_QUEUE.poll();
         if (message != null) {
           byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getCreatedDateTime()));
-          byte[] stringBytesToSend = message.getTextToSend().getBytes();
-          log.info("Sending message [{}]", message.getTextToSend());
+          byte[] stringBytesToSend = message.getTextToSend().getBytes(StandardCharsets.UTF_8.name());
+          log.info("Sending message [{}], bytes are [{}]", message.getTextToSend(), stringBytesToSend);
           byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
           byte[] compressedBytes = compressor.compress(bytesToSend);
-          byte[] compressedBytesWithTrailingBytes = addTrailingBytes(compressedBytes);
-          log.info("Sending [{}] compressed bytes with trailing bytes, bytes are [{}]",
+          log.info("Compressed bytes to send [{}] are [{}]", compressedBytes.length, compressedBytes);
+          byte[] compressedBytesWithTrailingBytes = addLeadingAndTrailingBytes(compressedBytes);
+          log.info("Sending [{}] compressed bytes with leading and trailing bytes, bytes are [{}]",
               compressedBytesWithTrailingBytes.length, compressedBytesWithTrailingBytes);
           for (int i = 0; i < TIMES_TO_SEND_ONE_MESSAGE; i++) {
             long start = System.currentTimeMillis();
@@ -176,6 +183,7 @@ public class SerialService {
               log.info("!!! Got duplicated message [{}], not adding to topic", message);
             } else {
               topicMessages.add(message);
+              MESSAGES.put(message.getTopic(), topicMessages);
               log.info("Topic has [{}] received messages [{}]",
                       topicMessages.stream().filter(m -> m.isReceived()).count(),
                       topicMessages.stream().filter(m -> m.isReceived())
@@ -205,14 +213,14 @@ public class SerialService {
     return new byte[RECEIVE_BUFFER_SIZE + MAX_PACKET_SIZE * 2];
   }
 
-  private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException {
+  private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException, UnsupportedEncodingException {
     byte[] receivedBytes = extractedMessage.getReceivedBytes();
     log.info("Extracted message without trailing bytes has [{}] bytes, checksum ok [{}], bytes are [{}]",
             receivedBytes.length, extractedMessage.isChecksumOk(), extractedMessage.getReceivedBytes());
     byte[] decompressedBytes = compressor.decompress(receivedBytes);
     log.info("Decompressed received message size is [{}] bytes", decompressedBytes.length);
     int seconds = fromByteArray(decompressedBytes, 0, 4);
-    String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4);
+    String receivedText = new String(decompressedBytes, 4, decompressedBytes.length - 4, StandardCharsets.UTF_8.name());
     log.info("Received text is [{}]", receivedText);
     return Message.received(receivedText, seconds, extractedMessage.isNoTrailingBytes(), extractedMessage.isChecksumOk());
   }
@@ -232,7 +240,7 @@ public class SerialService {
     if (messageStart >= 0) {
       messageEnd = findMessageEnd(longByteArray, messageStart + 2, longByteArrayOffset);
     }
-    if (messageStart >= 0 && messageEnd > messageStart + 2) {
+    if (messageStart >= 0 && messageEnd > messageStart + 5) {
       return getExtractedMessage(longByteArray, messageStart, messageEnd);
     }
     return null;
@@ -243,8 +251,8 @@ public class SerialService {
     byte[] receivedBytes;
     boolean noTrailingBytes = false;
     boolean checksumOk = false;
-    receivedBytes = new byte[messageEnd - messageStart];
-    System.arraycopy(longByteArray, messageStart, receivedBytes, 0, messageEnd - messageStart);
+    receivedBytes = new byte[messageEnd - messageStart - 2];
+    System.arraycopy(longByteArray, messageStart + 2, receivedBytes, 0, messageEnd - messageStart - 2);
     if (!isMessageEnd(receivedBytes, receivedBytes.length - 2)) {
       noTrailingBytes = true;
     } else {
@@ -281,19 +289,21 @@ public class SerialService {
   }
 
   private boolean isMessageStart(byte[] bytes, int offset) {
-    return bytes[offset] == (byte) 85 && bytes[offset + 1] == (byte) -113;
+    return bytes[offset] == (byte) -127 && bytes[offset + 1] == (byte) -128;
   }
 
   private boolean isMessageEnd(byte[] bytes, int offset) {
     return bytes[offset] == (byte) -128 && bytes[offset + 1] == (byte) -127;
   }
 
-  private byte[] addTrailingBytes(byte[] compressedBytes) {
-    byte[] bytesToSendWithTrailingBytes = new byte[compressedBytes.length + 3];
-    System.arraycopy(compressedBytes, 0, bytesToSendWithTrailingBytes, 0, compressedBytes.length);
-    bytesToSendWithTrailingBytes[compressedBytes.length] = checksum(compressedBytes);
-    bytesToSendWithTrailingBytes[compressedBytes.length + 1] = (byte) -128;
-    bytesToSendWithTrailingBytes[compressedBytes.length + 2] = (byte) -127;
+  private byte[] addLeadingAndTrailingBytes(byte[] compressedBytes) {
+    byte[] bytesToSendWithTrailingBytes = new byte[compressedBytes.length + 5];
+    System.arraycopy(compressedBytes, 0, bytesToSendWithTrailingBytes, 2, compressedBytes.length);
+    bytesToSendWithTrailingBytes[0] = (byte) -127;
+    bytesToSendWithTrailingBytes[1] = (byte) -128;
+    bytesToSendWithTrailingBytes[compressedBytes.length + 2] = checksum(compressedBytes);
+    bytesToSendWithTrailingBytes[compressedBytes.length + 3] = (byte) -128;
+    bytesToSendWithTrailingBytes[compressedBytes.length + 4] = (byte) -127;
     return bytesToSendWithTrailingBytes;
   }
 
