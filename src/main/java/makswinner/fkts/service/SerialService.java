@@ -1,4 +1,4 @@
-package makswinner.fkts;
+package makswinner.fkts.service;
 
 import static makswinner.fkts.Util.*;
 
@@ -9,14 +9,20 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.zip.DataFormatException;
+import javax.annotation.PostConstruct;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import makswinner.fkts.Compressor;
+import makswinner.fkts.Message;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Slf4j
-public class SerialWorker implements Runnable {
+@Service
+public class SerialService {
 
   private static final String DEFAULT_SERIAL_PORT = "COM5";
   private static final int BAUD_RATE = 9600;
@@ -32,39 +38,47 @@ public class SerialWorker implements Runnable {
 
   private final Compressor compressor = new Compressor();
 
+  @Value("${serial.port}")
   private String serialPort;
 
-  public SerialWorker(String serialPort) {
-      this.serialPort = serialPort;
-  }
-
-  public static void main(String[] args) throws Exception {
-    new Thread(new SerialWorker(args.length > 0 ? args[0] : null)).start();
-
+  private void sendSomeMessages() throws Exception {
     int i = 0;
     while (true) {
-      String topic = "/Україна/Київ/балачки";
+      String topic = "/" + ++i + "/Україна/Київ/балачки";
       String user = "Все буде Україна!";
-      String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
+      String text = " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
           "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
       Message message = Message.builder().topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now()).build();
       OUT_QUEUE.offer(message);
+      log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
       Thread.sleep(10000);
     }
   }
 
-  public void run() {
+  @PostConstruct
+  public void init() {
     NRSerialPort serial = new NRSerialPort(serialPort == null ? DEFAULT_SERIAL_PORT : serialPort, BAUD_RATE);
+    //log.info("Started serial service, serial port is [{}]", serial.getSerialPortInstance().getName());
     new Thread(() -> {
       receiveMessages(serial);
     }).start();
+
     try {
       Thread.sleep(1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
+
     new Thread(() -> {
       sendMessages(serial);
+    }).start();
+
+    new Thread(() -> {
+      try {
+        sendSomeMessages();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
     }).start();
   }
 

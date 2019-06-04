@@ -1,0 +1,9 @@
+serial:
+  port: COM5
+
+server:
+  port: 8090
+
+logging:
+  level:
+    root: INFO

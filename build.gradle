@@ -1,0 +1,26 @@
+
+plugins {
+    id 'java'
+    id 'idea'
+    id 'org.springframework.boot' version '2.1.5.RELEASE'
+}
+
+group = 'makswinner'
+version = '1.0'
+sourceCompatibility = 8
+targetCompatibility = 8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.neuronrobotics:nrjavaserial:3.15.0")
+    implementation("commons-io:commons-io:2.6")
+    implementation("org.apache.commons:commons-lang3:3.9")
+    implementation("org.springframework.boot:spring-boot-starter-web:2.1.5.RELEASE")
+
+    compileOnly("org.projectlombok:lombok:1.18.8")
+    annotationProcessor("org.projectlombok:lombok:1.18.8")
+}
+
