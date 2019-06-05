@@ -1,6 +1,16 @@
 package makswinner.fkts.service;
 
+import static makswinner.fkts.Util.*;
+
 import gnu.io.NRSerialPort;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.zip.DataFormatException;
+import javax.annotation.PostConstruct;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -11,25 +21,12 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
-import java.util.zip.DataFormatException;
-
-import static makswinner.fkts.Util.*;
-
 @Slf4j
 @Service
 public class SerialService {
+
+  private static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
+  private static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
 
   private static final int BAUD_RATE = 9600;
   private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
@@ -37,10 +34,8 @@ public class SerialService {
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
 
-  public static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
-  public static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
-  public static final int MAX_PACKET_SIZE = 222;
-  public static final int RECEIVE_BUFFER_SIZE = 1024;
+  private static final int MAX_PACKET_SIZE = 222;
+  private static final int RECEIVE_BUFFER_SIZE = 1024;
 
   private final Compressor compressor = new Compressor();
 
