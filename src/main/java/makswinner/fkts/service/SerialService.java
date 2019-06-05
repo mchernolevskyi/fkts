@@ -55,10 +55,53 @@ public class SerialService {
       String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
           "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
       Message message = Message.builder().topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now()).build();
-      OUT_QUEUE.offer(message);
+      offerMessageToQueue(message);
+      putMessageToTopic(message);
       log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
       Thread.sleep(10000);
     }
+  }
+
+  public void offerMessageToQueue(Message message) {
+    if (OUT_QUEUE.stream().anyMatch(m -> m.contentEquals(message))) {
+      log.info("!!! Got duplicated message [{}], not adding to queue", message);
+      return;
+    } else {
+      OUT_QUEUE.offer(message);
+    }
+  }
+
+  public void putMessageToTopic(Message message) {
+    Set<Message> topicMessages = MESSAGES.get(message.getTopic());
+    if (topicMessages == null) {
+      topicMessages = new HashSet<>();
+    } else {
+      if (topicMessages.stream().anyMatch(m -> m.contentEquals(message))) {
+        log.info("!!! Got duplicated message [{}], not adding to topic", message);
+        return;
+      }
+    }
+    topicMessages.add(message);
+    MESSAGES.put(message.getTopic(), topicMessages);
+    try {
+      log.info("Topic [{}] ([{}]) has [{}] received messages [{}]",
+          message.getTopic(),
+          Base64.getEncoder().encodeToString(message.getTopic().getBytes(StandardCharsets.UTF_8.name())),
+          topicMessages.stream().filter(m -> m.isReceived()).count(),
+          topicMessages.stream().filter(m -> m.isReceived())
+              .collect(Collectors.toCollection(() -> new TreeSet<>(
+                  Comparator.comparing(Message::getReceivedDateTime)))));
+    } catch (UnsupportedEncodingException e) {
+      log.error("Could not log info", e);
+    }
+  }
+
+  public Set<Message> getTopicMessages(String topic) {
+    return MESSAGES.get(topic);
+  }
+
+  public Set<String> getTopics() {
+    return MESSAGES.keySet();
   }
 
   @PostConstruct
@@ -115,12 +158,6 @@ public class SerialService {
             } else {
               message.setSent(true);
               message.setSentDateTime(LocalDateTime.now());
-              Set<Message> topicMessages = MESSAGES.get(message.getTopic());
-              if (topicMessages == null) {
-                  topicMessages = new HashSet<>();
-              }
-              topicMessages.add(message);
-              MESSAGES.put(message.getTopic(), topicMessages);//TODO move to controller/service
             }
           }
         }
@@ -175,21 +212,7 @@ public class SerialService {
                       longByteArrayOffset, longByteArray);
             Message message = getMessageFromExtractedMessage(extractedMessage);
             log.info("Received message is [{}]", message);
-            Set<Message> topicMessages = MESSAGES.get(message.getTopic());
-            if (topicMessages == null) {
-              topicMessages = new HashSet<>();
-            }
-            if (topicMessages.stream().anyMatch(m -> m.contentEquals(message))) {
-              log.info("!!! Got duplicated message [{}], not adding to topic", message);
-            } else {
-              topicMessages.add(message);
-              MESSAGES.put(message.getTopic(), topicMessages);
-              log.info("Topic has [{}] received messages [{}]",
-                      topicMessages.stream().filter(m -> m.isReceived()).count(),
-                      topicMessages.stream().filter(m -> m.isReceived())
-                              .collect(Collectors.toCollection(() -> new TreeSet<>(
-                                      Comparator.comparing(Message::getReceivedDateTime)))));
-            }
+            putMessageToTopic(message);
           } else {
             log.info(
                 "Partly received message, current array has size [{}] bytes, could not extract message, bytes are [{}]",

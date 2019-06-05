@@ -24,9 +24,9 @@ public class Message {
     private LocalDateTime sentDateTime;
 
     private boolean received;
+    private LocalDateTime receivedDateTime;
     private boolean noTrailingBytes;
     private boolean checksumOk;
-    private LocalDateTime receivedDateTime;
 
     @Override
     public String toString() {
