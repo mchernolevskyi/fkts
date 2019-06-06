@@ -1,5 +1,6 @@
 package makswinner.fkts.service;
 
+import static java.util.Comparator.comparing;
 import static makswinner.fkts.Util.*;
 
 import gnu.io.NRSerialPort;
@@ -27,6 +28,9 @@ public class SerialService {
 
   private static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
   private static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
+
+  private static Map<Long, Exception> SEND_EXCEPTIONS;
+  private static Map<Long, Exception> RECEIVE_EXCEPTIONS;
 
   private static final int BAUD_RATE = 9600;
   private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
@@ -79,13 +83,12 @@ public class SerialService {
     topicMessages.add(message);
     MESSAGES.put(message.getTopic(), topicMessages);
     try {
-      log.info("Topic [{}] ([{}]) has [{}] received messages [{}]",
+      log.info("Topic [{}] ([{}]) has [{}] received messages, last message text is [{}]",
           message.getTopic(),
           Base64.getEncoder().encodeToString(message.getTopic().getBytes(StandardCharsets.UTF_8.name())),
           topicMessages.stream().filter(m -> m.isReceived()).count(),
-          topicMessages.stream().filter(m -> m.isReceived())
-              .collect(Collectors.toCollection(() -> new TreeSet<>(
-                  Comparator.comparing(Message::getReceivedDateTime)))));
+          topicMessages.stream().sorted(comparing(Message::getCreatedDateTime).reversed()).findFirst().get().getText()
+      );
     } catch (UnsupportedEncodingException e) {
       log.error("Could not log info", e);
     }
@@ -157,15 +160,20 @@ public class SerialService {
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_SENDING);
-      } catch (IOException e) {
-        log.error("IOException while sending", e);
-      } catch (InterruptedException e) {
-        log.error("InterruptedException while sending", e);
       } catch (Exception e) {
-        log.error("Undefined exception while sending", e);
+        log.error("Exception while sending", e);
+        SEND_EXCEPTIONS.put(System.currentTimeMillis(), e);
       }
     }
     //serialOutputStream.close();
+  }
+
+  public Map<String, Object> getStatistics() {
+    return new HashMap<String, Object>() {{
+      put("SEND_EXCEPTIONS", SEND_EXCEPTIONS);
+      put("RECEIVE_EXCEPTIONS", RECEIVE_EXCEPTIONS);
+    }};
+    //TODO
   }
 
   @Getter
@@ -215,14 +223,9 @@ public class SerialService {
           }
         }
         Thread.sleep(TIMEOUT_BETWEEN_RECEIVING);
-      } catch (IOException e) {
-        log.error("IOException while receiving", e);
-      } catch (DataFormatException e) {
-        log.error("DataFormatException while receiving", e);
-      } catch (InterruptedException e) {
-        log.error("InterruptedException while receiving", e);
       } catch (Exception e) {
-        log.error("Undefined exception while receiving", e);
+        log.error("Exception while receiving", e);
+        RECEIVE_EXCEPTIONS.put(System.currentTimeMillis(), e);
       }
     }
   }

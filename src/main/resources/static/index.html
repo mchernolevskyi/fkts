@@ -9,21 +9,26 @@
 <body>
 <div class="container h-100">
   <div class="row h-100">
-    <div class="col-2 bg-light">
-      <ul class="nav flex-column" id="topics_menu">
+    <div class="col-3 bg-light">
         <script>
-          $.getJSON('/topics', function (data) {
-            var topics = data;
-            console.log("Topics: " + topics);
-            $.each(topics, function(index, value) {
-              $("#topics_menu").append("<li class=\"nav-item\"><a class=\"nav-link " +
-                  (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
+          window.setInterval(function(){
+            $.getJSON('/topics', function (data) {
+              var topics = data;
+              console.log("Topics: " + topics);
+              if (topics.length != $("#topics")[0].childElementCount) {
+                $("#topics").html("");
+                $.each(topics, function(index, value) {
+                  $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
+                      (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
+                });
+              }
             });
-          });
+           }, 1000);
         </script>
+      <ul class="nav flex-column" id="topics">
       </ul>
     </div>
-    <div class="col-8">
+    <div class="col-9">
       <div class="container h-100">
         <div class="row h-75 mb-2 bg-light">
           <script>
@@ -36,7 +41,7 @@
                   $("#messages").html("");
                   $.each(messages, function(index, value) {
                     $("#messages").append("<div class=\"shadow p-2 mb-1 bg-white rounded\">" +
-                        value.user + " >> " + value.text + "</div>");
+                        value.user + " >> " + value.text + " (sent: " + value.sent + ", received: " + value.received + ")</div>");
                   });
                 }
               });
@@ -49,14 +54,14 @@
           <div class="col">
             <form>
               <div class="form-group">
+                <br>
                 <div class="row">
-                  <div class="col">
-                    <input type="text" class="form-control" id="messageToSend"
-                           aria-describedby="messageToSendHelp" placeholder="Enter your message">
+                  <div class="col-10">
+                    <textarea class="form-control" id="messageToSend" rows="3"></textarea>
                     <small id="messageToSendHelp" class="form-text text-muted">Enter your message</small>
-                  </div>
+                  </div><br>
                   <div class="col">
-                    <button type="submit" class="btn btn-primary">Send</button>
+                    <br><button type="submit" class="btn btn-primary">Send</button>
                   </div>
                 </div>
               </div>

@@ -14,7 +14,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 @Setter
 @Builder
 @EqualsAndHashCode
-public class Message {
+public class Message implements Comparable<Message> {
     private LocalDateTime createdDateTime;
     private String topic;
     private String user;
@@ -56,4 +56,8 @@ public class Message {
                 text.equals(other.getText());
     }
 
+    @Override
+    public int compareTo(Message o) {
+        return this.getCreatedDateTime().compareTo(o.getCreatedDateTime());
+    }
 }
