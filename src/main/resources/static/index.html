@@ -32,20 +32,22 @@
                 var messages = data;
                 console.log("Messages: " + messages);
                 $.each(messages, function(index, value) {
-                  $("#messages").append("<div class=\"shadow p-3 mb-5 bg-white rounded\">" +
-                      value.user + ":" + value.text + "</div>");
+                  $("#messages").append("<div class=\"shadow p-3 mb-1 bg-white rounded\">" +
+                      value.user + " >> " + value.text + "</div>");
                 });
               });
             </script>
           </div>
         </div>
+        <div class="row"></div>
         <div class="row h-25 bg-light">
           <div class="col">
             <form>
               <div class="form-group">
                 <div class="row">
                   <div class="col">
-                    <input type="text" class="form-control" id="messageToSend" aria-describedby="messageToSendHelp" placeholder="Enter your message">
+                    <input type="text" class="form-control" id="messageToSend"
+                           aria-describedby="messageToSendHelp" placeholder="Enter your message">
                     <small id="messageToSendHelp" class="form-text text-muted">Enter your message</small>
                   </div>
                   <div class="col">
