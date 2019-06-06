@@ -45,7 +45,7 @@ public class SerialService {
   private void sendSomeMessages() throws Exception {
     int i = 0;
     while (true) {
-      String topic = "/Україна/Київ/балачки";
+      String topic = "/Україна/Київ/балачки" + (i % 2 + 1);
       String user = "Все буде Україна!";
       String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
           "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";

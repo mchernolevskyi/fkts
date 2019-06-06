@@ -8,19 +8,27 @@
 </head>
 <body>
 
+<script>
+  $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==', function (data) {
+    var messages = data;
+    console.log("Messages: " + messages);
+  });
+</script>
+
 <div class="container h-100">
   <div class="row h-100">
     <div class="col-2 bg-light">
-      <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link active" href="#">/Україна/Київ/балачки</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">Topic 2</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">Topic 3</a>
-        </li>
+      <ul class="nav flex-column" id="topics_menu">
+        <script>
+          $.getJSON('/topics', function (data) {
+            var topics = data;
+            console.log("Topics: " + topics);
+            $.each(topics, function(index, value) {
+              $("#topics_menu").append("<li class=\"nav-item\"><a class=\"nav-link " +
+                  (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
+            });
+          });
+        </script>
       </ul>
     </div>
     <div class="col-8">
