@@ -25,21 +25,26 @@
     </div>
     <div class="col-8">
       <div class="container h-100">
-        <div class="row h-75 bg-light">
-          <div class="col" id="messages">
-            <script>
+        <div class="row h-75 mb-2 bg-light">
+          <script>
+            window.setInterval(function(){
               $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==', function (data) {
                 var messages = data;
-                console.log("Messages: " + messages);
-                $.each(messages, function(index, value) {
-                  $("#messages").append("<div class=\"shadow p-3 mb-1 bg-white rounded\">" +
-                      value.user + " >> " + value.text + "</div>");
-                });
+                console.log("Messages length: " + messages.length);
+                if (messages.length != $("#messages")[0].childElementCount) {
+                  console.log("Updating messages because childElementCount: " + $("#messages")[0].childElementCount);
+                  $("#messages").html("");
+                  $.each(messages, function(index, value) {
+                    $("#messages").append("<div class=\"shadow p-2 mb-1 bg-white rounded\">" +
+                        value.user + " >> " + value.text + "</div>");
+                  });
+                }
               });
-            </script>
+            }, 1000);
+          </script>
+          <div class="col" id="messages">
           </div>
         </div>
-        <div class="row"></div>
         <div class="row h-25 bg-light">
           <div class="col">
             <form>
