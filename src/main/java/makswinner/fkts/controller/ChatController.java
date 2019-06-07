@@ -33,7 +33,7 @@ public class ChatController {
                         Comparator.comparing(Message::getCreatedDateTime).reversed())));
     }
 
-    @PostMapping(path = "/topics", consumes = APPLICATION_JSON_UTF8_VALUE)
+    @PostMapping(path = "/messages", consumes = APPLICATION_JSON_UTF8_VALUE)
     public void postMessageToTopic(@Valid @RequestBody MessageDto dto) {
         //TODO already compress to check size
         Message message = convertToMessage(dto);

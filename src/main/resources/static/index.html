@@ -14,21 +14,21 @@
 <div class="container h-100">
   <div class="row h-100">
     <div class="col-3 bg-light">
-        <script>
-          window.setInterval(function(){
-            $.getJSON('/topics', function (data) {
-              var topics = data;
-              console.log("Topics: " + topics);
-              if (topics.length != $("#topics")[0].childElementCount) {
-                $("#topics").html("");
-                $.each(topics, function(index, value) {
-                  $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
-                      (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
-                });
-              }
-            });
-           }, 1000);
-        </script>
+      <script>
+        window.setInterval(function () {
+          $.getJSON('/topics', function (data) {
+            var topics = data;
+            console.log("Topics: " + topics);
+            if (topics.length != $("#topics")[0].childElementCount) {
+              $("#topics").html("");
+              $.each(topics, function (index, value) {
+                $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
+                    (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
+              });
+            }
+          });
+        }, 1000);
+      </script>
       <ul class="nav flex-column" id="topics">
       </ul>
     </div>
@@ -36,27 +36,30 @@
       <div class="container h-100">
         <div class="row h-75 mb-2 bg-light scrollable">
           <script>
-            window.setInterval(function(){
-              $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==', function (data) {
-                var messages = data;
-                console.log("Messages length: " + messages.length);
-                if (messages.length != $("#messages")[0].childElementCount) {
-                  console.log("Updating messages because childElementCount: " + $("#messages")[0].childElementCount);
-                  $("#messages").html("");
-                  $.each(messages, function(index, value) {
-                    var outgoingStyle = "justify-content-start ml-1";
-                    var incomingStyle = "justify-content-end mr-1";
-                    var style = outgoingStyle;
-                    if (value.received == true) {
-                      style = incomingStyle;
+            window.setInterval(function () {
+              $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==',
+                  function (data) {
+                    var messages = data;
+                    console.log("Messages length: " + messages.length);
+                    if (messages.length != $("#messages")[0].childElementCount) {
+                      console.log("Updating messages because childElementCount: " + $(
+                          "#messages")[0].childElementCount);
+                      $("#messages").html("");
+                      $.each(messages, function (index, value) {
+                        var outgoingStyle = "justify-content-start ml-1";
+                        var incomingStyle = "justify-content-end mr-1";
+                        var style = outgoingStyle;
+                        if (value.received == true) {
+                          style = incomingStyle;
+                        }
+                        $("#messages").append("<div class=\"row " + style + "\">" +
+                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\">" +
+                            value.user + " >> " + value.text + " (sent: " + value.sent
+                            + ", received: " + value.received + ")" +
+                            "</div></div>");
+                      });
                     }
-                    $("#messages").append("<div class=\"row " + style + "\">" +
-                        "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\">" +
-                        value.user + " >> " + value.text + " (sent: " + value.sent + ", received: " + value.received + ")" +
-                        "</div></div>");
                   });
-                }
-              });
             }, 1000);
           </script>
           <div class="col" id="messages">
@@ -68,15 +71,57 @@
               <div class="form-group">
                 <br>
                 <div class="row">
+                  <div class="col-1">
+                    Nick
+                  </div>
+                  <div class="col-3">
+                    <input type="text" class="form-control" id="nick" placeholder="Enter nick">
+                  </div>
+                </div>
+                <br>
+                <div class="row">
                   <div class="col-10">
-                    <textarea class="form-control" id="messageToSend" rows="3"></textarea>
-                    <small id="messageToSendHelp" class="form-text text-muted">Enter your message</small>
-                  </div><br>
+                    <textarea class="form-control" id="textToSend" rows="3"></textarea>
+                    <small id="messageToSendHelp" class="form-text text-muted">Enter your message
+                    </small>
+                  </div>
+                  <br>
                   <div class="col">
-                    <br><button type="submit" class="btn btn-primary">Send</button>
+                    <br>
+                    <button type="submit" class="btn btn-primary" id="sendMessageButton">Send
+                    </button>
                   </div>
                 </div>
               </div>
+              <script>
+                $("#sendMessageButton").click(function (event) {
+                  $.ajax({
+                    url: "/messages",
+                    type: "POST",
+                    data: JSON.stringify({
+                      topic: "L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==",
+                      user: $('input[name = nick]').val(),
+                      text: $('input[name = textToSend]').val()
+                    }),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function () {
+                      console.log("Message sent!");
+                    }
+                  });
+                });
+                //   $.post(
+                //       "/messages", {
+                //         topic: "L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==",
+                //         user: $('input[name = nick]').val(),
+                //         text: $('input[name = textToSend]').val()
+                //       }, function () {
+                //         console.log("Message sent!");
+                //       }
+                //   );
+                //   event.preventDefault();
+                // });
+              </script>
             </form>
           </div>
         </div>
@@ -84,4 +129,5 @@
     </div>
   </div>
 </div>
-</body></html>
+</body>
+</html>
