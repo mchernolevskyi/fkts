@@ -53,7 +53,10 @@ public class SerialService {
       String user = "Все буде Україна!";
       String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
           "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
-      Message message = Message.builder().topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now()).build();
+      Message message = Message.builder()
+          .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
+          .received(i % 5 == 0)
+          .build();
       offerMessageToQueue(message);
       putMessageToTopic(message);
       log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
