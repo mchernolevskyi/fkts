@@ -2,7 +2,7 @@ serial:
   port: COM5
 
 server:
-  port: 8090
+  port: 9999
 
 logging:
   level:
