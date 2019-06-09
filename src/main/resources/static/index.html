@@ -34,7 +34,7 @@
     </div>
     <div class="col-9">
       <div class="container h-100">
-        <div class="row h-75 mb-2 bg-light scrollable">
+        <div class="row h-75 mb-2 bg-light scrollable" id="messagesScrollable">
           <script>
             window.setInterval(function () {
               $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==',
@@ -58,6 +58,10 @@
                             + ", received: " + value.received + ")" +
                             "</div></div>");
                       });
+                      var objDiv = document.getElementById("messagesScrollable");
+                      if (objDiv.scrollHeight - objDiv.scrollTop < 640.0) {
+                        objDiv.scrollTop = objDiv.scrollHeight;
+                      }
                     }
                   });
             }, 1000);
@@ -81,11 +85,9 @@
                 <br>
                 <div class="row">
                   <div class="col-10">
-                    <textarea class="form-control" id="textToSend" rows="3"></textarea>
-                    <small id="messageToSendHelp" class="form-text text-muted">Enter your message
+                    <textarea class="form-control" id="textToSend" rows="2"></textarea>
                     </small>
                   </div>
-                  <br>
                   <div class="col">
                     <br>
                     <button type="submit" class="btn btn-primary" id="sendMessageButton">Send
@@ -109,6 +111,7 @@
                       console.log("Message sent!");
                     }
                   });
+                  $("#textToSend").val("");
                 });
               </script>
             </form>

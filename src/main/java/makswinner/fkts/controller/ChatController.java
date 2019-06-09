@@ -1,5 +1,6 @@
 package makswinner.fkts.controller;
 
+import static java.util.Comparator.comparing;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 import java.io.UnsupportedEncodingException;
@@ -26,11 +27,10 @@ public class ChatController {
     }
 
     @GetMapping(path = "/topics/{topic}", produces = APPLICATION_JSON_UTF8_VALUE)
-    public Set<Message> getMessagesByTopic(@PathVariable("topic") String topicBase64) throws UnsupportedEncodingException {
+    public List<Message> getMessagesByTopic(@PathVariable("topic") String topicBase64) throws UnsupportedEncodingException {
         String topic = new String(Base64.getDecoder().decode(topicBase64), StandardCharsets.UTF_8.name());
         return Optional.ofNullable(serialService.getTopicMessages(topic)).orElse(new HashSet<>()).stream()
-                .collect(Collectors.toCollection(() -> new TreeSet<>(
-                        Comparator.comparing(Message::getCreatedDateTime).reversed())));
+                .sorted(comparing(Message::getCreatedDateTime)).collect(Collectors.toList());
     }
 
     @PostMapping(path = "/messages", consumes = APPLICATION_JSON_UTF8_VALUE)
