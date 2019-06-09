@@ -18,7 +18,7 @@
         window.setInterval(function () {
           $.getJSON('/topics', function (data) {
             var topics = data;
-            console.log("Topics: " + topics);
+            //console.log("Topics: " + topics);
             if (topics.length != $("#topics")[0].childElementCount) {
               $("#topics").html("");
               $.each(topics, function (index, value) {
@@ -40,10 +40,10 @@
               $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==',
                   function (data) {
                     var messages = data;
-                    console.log("Messages length: " + messages.length);
+                    //console.log("Messages length: " + messages.length);
                     if (messages.length != $("#messages")[0].childElementCount) {
-                      console.log("Updating messages because childElementCount: " + $(
-                          "#messages")[0].childElementCount);
+                      //console.log("Updating messages because childElementCount: " + $(
+                      //    "#messages")[0].childElementCount);
                       $("#messages").html("");
                       $.each(messages, function (index, value) {
                         var outgoingStyle = "justify-content-start ml-1";
@@ -99,9 +99,9 @@
                     url: "/messages",
                     type: "POST",
                     data: JSON.stringify({
-                      topic: "L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==",
-                      user: $('input[name = nick]').val(),
-                      text: $('input[name = textToSend]').val()
+                      topic: "/Україна/Київ/балачки1",
+                      user: $("#nick").val(),
+                      text: $("#textToSend").val()
                     }),
                     contentType: "application/json; charset=utf-8",
                     dataType: "json",
@@ -110,17 +110,6 @@
                     }
                   });
                 });
-                //   $.post(
-                //       "/messages", {
-                //         topic: "L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==",
-                //         user: $('input[name = nick]').val(),
-                //         text: $('input[name = textToSend]').val()
-                //       }, function () {
-                //         console.log("Message sent!");
-                //       }
-                //   );
-                //   event.preventDefault();
-                // });
               </script>
             </form>
           </div>
