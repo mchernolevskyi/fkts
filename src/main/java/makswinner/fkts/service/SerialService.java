@@ -51,6 +51,50 @@ public class SerialService {
   @Value("${serial.port}")
   private String serialPort;
 
+  @PostConstruct
+  public void init() {
+    NRSerialPort serial = new NRSerialPort(serialPort, BAUD_RATE);
+    log.info("Started serial service, serial port is [{}]", serialPort);
+    new Thread(() -> {
+      receiveMessages(serial);
+    }).start();
+
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
+    new Thread(() -> {
+      sendMessages(serial);
+    }).start();
+
+    new Thread(() -> {
+      try {
+        sendSomeMessages();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }).start();
+  }
+
+  public Set<String> getTopics() {
+    return MESSAGES.keySet();
+  }
+
+  public Set<Message> getTopicMessages(String topic) {
+    return MESSAGES.get(topic);
+  }
+
+  public void sendMessage(Message message) {
+    if (getBytesToSend(message).length <= MAX_MESSAGE_SIZE) {
+      offerMessageToQueue(message);
+      putMessageToTopic(message);
+    } else {
+      throw new RuntimeException("Cannot send message because it is too long");
+    }
+  }
+
   private void sendSomeMessages() throws Exception {
     int i = 0;
     while (true) {
@@ -67,11 +111,6 @@ public class SerialService {
       log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
       Thread.sleep(10000);
     }
-  }
-
-  public void sendMessage(Message message) {
-    offerMessageToQueue(message);
-    putMessageToTopic(message);
   }
 
   private void offerMessageToQueue(Message message) {
@@ -105,41 +144,6 @@ public class SerialService {
     } catch (UnsupportedEncodingException e) {
       log.error("Could not log info", e);
     }
-  }
-
-  public Set<Message> getTopicMessages(String topic) {
-    return MESSAGES.get(topic);
-  }
-
-  public Set<String> getTopics() {
-    return MESSAGES.keySet();
-  }
-
-  @PostConstruct
-  public void init() {
-    NRSerialPort serial = new NRSerialPort(serialPort, BAUD_RATE);
-    log.info("Started serial service, serial port is [{}]", serialPort);
-    new Thread(() -> {
-      receiveMessages(serial);
-    }).start();
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    new Thread(() -> {
-      sendMessages(serial);
-    }).start();
-
-    new Thread(() -> {
-      try {
-        sendSomeMessages();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }).start();
   }
 
   private void sendMessages(NRSerialPort serial) {
@@ -195,10 +199,6 @@ public class SerialService {
       put("RECEIVE_EXCEPTIONS", RECEIVE_EXCEPTIONS);
     }};
     //TODO
-  }
-
-  public int getCompressedMessageSize(Message message) {
-    return getBytesToSend(message).length;
   }
 
   @Getter
