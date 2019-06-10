@@ -37,7 +37,7 @@ public class SerialService {
   private static Map<Long, Exception> RECEIVE_EXCEPTIONS;
 
   private static final int BAUD_RATE = 9600;
-  private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
+  private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
@@ -127,13 +127,13 @@ public class SerialService {
       sendMessages(serial);
     }).start();
 
-    new Thread(() -> {
-      try {
-        sendSomeMessages();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }).start();
+//    new Thread(() -> {
+//      try {
+//        sendSomeMessages();
+//      } catch (Exception e) {
+//        e.printStackTrace();
+//      }
+//    }).start();
   }
 
   public void sendMessages(NRSerialPort serial) {
