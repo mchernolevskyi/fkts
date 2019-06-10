@@ -8,6 +8,12 @@
     .scrollable {
       overflow-y: auto;
     }
+    .h-70 {
+      height: 70%!important;
+    }
+    .h-29 {
+      height: 29%!important;
+    }
   </style>
 </head>
 <body>
@@ -34,7 +40,7 @@
     </div>
     <div class="col-9">
       <div class="container h-100">
-        <div class="row h-75 mb-2 bg-light scrollable" id="messagesScrollable">
+        <div class="row h-70 mb-2 bg-light scrollable" id="messagesScrollable">
           <script>
             window.setInterval(function () {
               $.getJSON('/topics/L9Cj0LrRgNCw0ZfQvdCwL9Ca0LjRl9CyL9Cx0LDQu9Cw0YfQutC4MQ==',
@@ -59,9 +65,9 @@
                             "</div></div>");
                       });
                       var objDiv = document.getElementById("messagesScrollable");
-                      if (objDiv.scrollHeight - objDiv.scrollTop < 640.0) {
+                      //if (objDiv.scrollHeight - objDiv.scrollTop < 800.0) {
                         objDiv.scrollTop = objDiv.scrollHeight;
-                      }
+                      //}
                     }
                   });
             }, 1000);
@@ -69,7 +75,7 @@
           <div class="col" id="messages">
           </div>
         </div>
-        <div class="row h-25 bg-light">
+        <div class="row h-29 bg-light">
           <div class="col">
             <form>
               <div class="form-group">
@@ -112,6 +118,7 @@
                     }
                   });
                   $("#textToSend").val("");
+                  event.preventDefault();
                 });
               </script>
             </form>
