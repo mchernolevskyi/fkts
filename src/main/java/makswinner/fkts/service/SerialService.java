@@ -30,6 +30,8 @@ import static makswinner.fkts.Util.*;
 @Service
 public class SerialService {
 
+  public static final int MAX_MESSAGE_SIZE = 222;
+
   private static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
   private static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
 
@@ -42,7 +44,6 @@ public class SerialService {
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
 
-  private static final int MAX_PACKET_SIZE = 222;
   private static final int RECEIVE_BUFFER_SIZE = 1024;
 
   private final Compressor compressor = new Compressor();
@@ -68,7 +69,12 @@ public class SerialService {
     }
   }
 
-  public void offerMessageToQueue(Message message) {
+  public void sendMessage(Message message) {
+    offerMessageToQueue(message);
+    putMessageToTopic(message);
+  }
+
+  private void offerMessageToQueue(Message message) {
     if (OUT_QUEUE.stream().anyMatch(m -> m.contentEquals(message))) {
       log.info("!!! Got duplicated message [{}], not adding to queue", message);
       return;
@@ -77,7 +83,7 @@ public class SerialService {
     }
   }
 
-  public void putMessageToTopic(Message message) {
+  private void putMessageToTopic(Message message) {
     Set<Message> topicMessages = MESSAGES.get(message.getTopic());
     if (topicMessages == null) {
       topicMessages = new HashSet<>();
@@ -127,37 +133,32 @@ public class SerialService {
       sendMessages(serial);
     }).start();
 
-//    new Thread(() -> {
-//      try {
-//        sendSomeMessages();
-//      } catch (Exception e) {
-//        e.printStackTrace();
-//      }
-//    }).start();
+    new Thread(() -> {
+      try {
+        sendSomeMessages();
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }).start();
   }
 
-  public void sendMessages(NRSerialPort serial) {
+  private void sendMessages(NRSerialPort serial) {
     //serial.connect();
     BufferedOutputStream serialOutputStream = IOUtils.buffer(serial.getOutputStream());
     while (true) {
       try {
         Message message = OUT_QUEUE.poll();
         if (message != null) {
-          byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getCreatedDateTime()));
-          byte[] stringBytesToSend = message.getTextToSend().getBytes(StandardCharsets.UTF_8.name());
-          log.info("Sending message [{}], bytes are [{}]", message.getTextToSend(), stringBytesToSend);
-          byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
-          byte[] compressedBytes = compressor.compress(bytesToSend);
-          log.info("Compressed bytes to send [{}] are [{}]", compressedBytes.length, compressedBytes);
-          byte[] compressedBytesWithTrailingBytes = addLeadingAndTrailingBytes(compressedBytes);
+          log.info("Sending message [{}]", message.getTextToSend());
+          byte[] compressedBytesWithLeadingAndTrailingBytes = getBytesToSend(message);
           log.info("Sending [{}] compressed bytes with leading and trailing bytes, bytes are [{}]",
-              compressedBytesWithTrailingBytes.length, compressedBytesWithTrailingBytes);
+              compressedBytesWithLeadingAndTrailingBytes.length, compressedBytesWithLeadingAndTrailingBytes);
           for (int i = 0; i < TIMES_TO_SEND_ONE_MESSAGE; i++) {
             long start = System.currentTimeMillis();
-            serialOutputStream.write(compressedBytesWithTrailingBytes);
+            serialOutputStream.write(compressedBytesWithLeadingAndTrailingBytes);
             serialOutputStream.flush();
             log.info("Sent [{}] bytes in [{}] ms",
-                    compressedBytesWithTrailingBytes.length, (System.currentTimeMillis() - start));
+                    compressedBytesWithLeadingAndTrailingBytes.length, (System.currentTimeMillis() - start));
             if (message.isSent()) {
               Thread.sleep(TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE);
             } else {
@@ -175,12 +176,29 @@ public class SerialService {
     //serialOutputStream.close();
   }
 
+  private byte[] getBytesToSend(Message message) {
+    try {
+      byte[] bytesCurrentDateTime = toByteArray(toSeconds(message.getCreatedDateTime()));
+      byte[] stringBytesToSend = message.getTextToSend().getBytes(StandardCharsets.UTF_8.name());
+      byte[] bytesToSend = ArrayUtils.addAll(bytesCurrentDateTime, stringBytesToSend);
+      byte[] compressedBytes = compressor.compress(bytesToSend);
+      log.debug("Compressed message bytes [{}] are [{}]", compressedBytes.length, compressedBytes);
+      return addLeadingAndTrailingBytes(compressedBytes);
+    } catch (UnsupportedEncodingException e) {
+      throw new RuntimeException("Could not get bytes to send", e);
+    }
+  }
+
   public Map<String, Object> getStatistics() {
     return new HashMap<String, Object>() {{
       put("SEND_EXCEPTIONS", SEND_EXCEPTIONS);
       put("RECEIVE_EXCEPTIONS", RECEIVE_EXCEPTIONS);
     }};
     //TODO
+  }
+
+  public int getCompressedMessageSize(Message message) {
+    return getBytesToSend(message).length;
   }
 
   @Getter
@@ -192,7 +210,7 @@ public class SerialService {
     private boolean checksumOk;
   }
 
-  public void receiveMessages(NRSerialPort serial) {
+  private void receiveMessages(NRSerialPort serial) {
     serial.connect();
     BufferedInputStream serialInputStream = IOUtils.buffer(serial.getInputStream());
     Integer longByteArrayOffset = 0;
@@ -208,8 +226,8 @@ public class SerialService {
         int available = serialInputStream.available();
         //log.info("!!! Available [{}] bytes", available);
         if (available > 0) {
-          byte[] bytesInRaw = new byte[MAX_PACKET_SIZE];
-          int incomingLength = serialInputStream.read(bytesInRaw, 0, MAX_PACKET_SIZE);
+          byte[] bytesInRaw = new byte[MAX_MESSAGE_SIZE];
+          int incomingLength = serialInputStream.read(bytesInRaw, 0, MAX_MESSAGE_SIZE);
           log.info("Received [{}] bytes, bytes are [{}]", incomingLength, bytesInRaw);
           System.arraycopy(bytesInRaw, 0, longByteArray, longByteArrayOffset, incomingLength);
           longByteArrayOffset += incomingLength;
@@ -238,7 +256,7 @@ public class SerialService {
   }
 
   private byte[] initLongByteArray() {
-    return new byte[RECEIVE_BUFFER_SIZE + MAX_PACKET_SIZE * 2];
+    return new byte[RECEIVE_BUFFER_SIZE + MAX_MESSAGE_SIZE * 2];
   }
 
   private Message getMessageFromExtractedMessage(ExtractedMessage extractedMessage) throws DataFormatException, UnsupportedEncodingException {
@@ -309,7 +327,7 @@ public class SerialService {
         return i + 2;
       }
     }
-    if (result == -1 && end > MAX_PACKET_SIZE) {
+    if (result == -1 && end > MAX_MESSAGE_SIZE) {
       //try to find at least new message start
       result = findMessageStart(bytes, start, end);
     }

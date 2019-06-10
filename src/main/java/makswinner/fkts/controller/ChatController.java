@@ -1,6 +1,7 @@
 package makswinner.fkts.controller;
 
 import static java.util.Comparator.comparing;
+import static makswinner.fkts.service.SerialService.MAX_MESSAGE_SIZE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 import java.io.UnsupportedEncodingException;
@@ -35,10 +36,12 @@ public class ChatController {
 
     @PostMapping(path = "/messages", consumes = APPLICATION_JSON_UTF8_VALUE)
     public void postMessageToTopic(@Valid @RequestBody MessageDto dto) {
-        //TODO already compress to check size
         Message message = convertToMessage(dto);
-        serialService.offerMessageToQueue(message);
-        serialService.putMessageToTopic(message);
+        if (serialService.getCompressedMessageSize(message) <= MAX_MESSAGE_SIZE) {
+            serialService.sendMessage(message);
+        } else {
+            throw new RuntimeException("Cannot send message because it is too long");
+        }
     }
 
     @GetMapping(path = "/statistics", produces = APPLICATION_JSON_UTF8_VALUE)
