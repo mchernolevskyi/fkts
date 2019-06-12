@@ -33,10 +33,9 @@ public class ChatController {
                 .sorted(comparing(Message::getCreatedDateTime)).collect(Collectors.toList());
     }
 
-    @PostMapping(path = "/topics/{topic}", consumes = APPLICATION_JSON_UTF8_VALUE)
-    public void createNewTopic(@PathVariable("topic") @NotBlank String topicBase64) throws UnsupportedEncodingException {
-        String topic = new String(Base64.getDecoder().decode(topicBase64), StandardCharsets.UTF_8.name());
-        serialService.createNewTopic(topic);
+    @PostMapping(path = "/topics", consumes = APPLICATION_JSON_UTF8_VALUE)
+    public void createNewTopic(@Valid @RequestBody TopicDto dto) {
+        serialService.createNewTopic(dto.getTopic());
     }
 
     @PostMapping(path = "/messages", consumes = APPLICATION_JSON_UTF8_VALUE)

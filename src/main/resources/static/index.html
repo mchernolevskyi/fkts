@@ -8,9 +8,11 @@
     .scrollable {
       overflow-y: auto;
     }
+
     .h-70 {
       height: 70% !important;
     }
+
     .h-29 {
       height: 29% !important;
     }
@@ -40,7 +42,8 @@
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" id="createNewTopicButton">Create new topic</button>
+              <button type="button" class="btn btn-primary" id="createNewTopicButton">Create new topic
+              </button>
             </div>
           </div>
         </div>
@@ -70,8 +73,11 @@
         $("#createNewTopicButton").click(function (event) {
           //console.log("New topic button click");
           $.ajax({
-            url: "/topics/" + btoa($("#topic-name").val()),
+            url: "/topics",
             type: "POST",
+            data: JSON.stringify({
+              topic: $("#topic-name").val(),
+            }),
             contentType: "application/json; charset=utf-8",
             dataType: "json",
             success: function () {
