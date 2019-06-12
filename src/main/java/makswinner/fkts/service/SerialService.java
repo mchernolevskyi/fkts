@@ -86,6 +86,10 @@ public class SerialService {
     return MESSAGES.get(topic);
   }
 
+  public void createNewTopic(String topic) {
+    MESSAGES.put(topic, new HashSet<>());
+  }
+
   public void sendMessage(Message message) {
     if (getBytesToSend(message).length <= MAX_MESSAGE_SIZE) {
       offerMessageToQueue(message);
@@ -93,6 +97,14 @@ public class SerialService {
     } else {
       throw new RuntimeException("Cannot send message because it is too long");
     }
+  }
+
+  public Map<String, Object> getStatistics() {
+    return new HashMap<String, Object>() {{
+      put("SEND_EXCEPTIONS", SEND_EXCEPTIONS);
+      put("RECEIVE_EXCEPTIONS", RECEIVE_EXCEPTIONS);
+    }};
+    //TODO
   }
 
   private void sendSomeMessages() throws Exception {
@@ -191,14 +203,6 @@ public class SerialService {
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException("Could not get bytes to send", e);
     }
-  }
-
-  public Map<String, Object> getStatistics() {
-    return new HashMap<String, Object>() {{
-      put("SEND_EXCEPTIONS", SEND_EXCEPTIONS);
-      put("RECEIVE_EXCEPTIONS", RECEIVE_EXCEPTIONS);
-    }};
-    //TODO
   }
 
   @Getter

@@ -21,12 +21,19 @@
   <div class="row h-100">
     <div class="col-3 bg-light">
       <script>
+        function newTopic() {
+            //alert("34234234");
+            console.log("New topic");
+            $("#new_topic_modal").modal("show");
+        };
+
         window.setInterval(function () {
           $.getJSON('/topics', function (data) {
             var topics = data;
             //console.log("Topics: " + topics);
-            if (topics.length != $("#topics")[0].childElementCount) {
-              $("#topics").html("");
+            if (topics.length != $("#topics")[0].childElementCount - 1) {
+              $("#topics").html(
+                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">+</a></li>");
               $.each(topics, function (index, value) {
                 $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
                     (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
@@ -36,6 +43,7 @@
         }, 1000);
       </script>
       <ul class="nav flex-column" id="topics">
+        <li class="nav-item"><a class="nav-link" href="#" onClick="newTopic()">+</a></li>
       </ul>
     </div>
     <div class="col-9">
