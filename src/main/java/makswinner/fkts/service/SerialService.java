@@ -87,7 +87,11 @@ public class SerialService {
   }
 
   public void createNewTopic(String topic) {
-    MESSAGES.put(topic, new HashSet<>());
+    if (MESSAGES.get(topic) != null) {
+      //silently swallow
+    } else {
+      MESSAGES.put(topic, new HashSet<>());
+    }
   }
 
   public void sendMessage(Message message) {
