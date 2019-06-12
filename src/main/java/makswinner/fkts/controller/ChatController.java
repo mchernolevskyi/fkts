@@ -1,21 +1,18 @@
 package makswinner.fkts.controller;
 
-import static java.util.Comparator.comparing;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
-
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
 import makswinner.fkts.Message;
 import makswinner.fkts.service.SerialService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.HandlerMapping;
+
+import javax.validation.Valid;
+import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.util.Comparator.comparing;
+import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 @RestController
 public class ChatController {
@@ -28,11 +25,8 @@ public class ChatController {
         return serialService.getTopics();
     }
 
-    @GetMapping(path = "/messages/.*", produces = APPLICATION_JSON_UTF8_VALUE)
-    public List<Message> getMessagesByTopic(HttpServletRequest request) throws UnsupportedEncodingException {
-        //String topic = new String(Base64.getDecoder().decode(topicBase64), StandardCharsets.UTF_8.name());
-        String topic = (String) request.getAttribute(
-            HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+    @GetMapping(path = "/messages", produces = APPLICATION_JSON_UTF8_VALUE)
+    public List<Message> getMessagesByTopic(@RequestParam("topic") String topic) throws UnsupportedEncodingException {
         return Optional.ofNullable(serialService.getTopicMessages(topic)).orElse(new HashSet<>()).stream()
                 .sorted(comparing(Message::getCreatedDateTime)).collect(Collectors.toList());
     }
@@ -43,7 +37,7 @@ public class ChatController {
     }
 
     @PostMapping(path = "/messages", consumes = APPLICATION_JSON_UTF8_VALUE)
-    public void postMessageToTopic(@Valid @RequestBody MessageDto dto) {
+    public void sendMessage(@Valid @RequestBody MessageDto dto) {
         serialService.sendMessage(convertToMessage(dto));
     }
 
