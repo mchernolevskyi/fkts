@@ -100,7 +100,7 @@
         <div class="row h-70 mb-2 bg-light scrollable" id="messagesScrollable">
           <script>
             window.setInterval(function () {
-              $.getJSON("/topics/" + currentTopicBase64,
+              $.getJSON("/messages/" + encodeURIComponent(currentTopic),
                   function (data) {
                     var messages = data;
                     //console.log("Messages length: " + messages.length);

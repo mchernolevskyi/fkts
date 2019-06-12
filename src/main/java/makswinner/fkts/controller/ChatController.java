@@ -8,12 +8,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import makswinner.fkts.Message;
 import makswinner.fkts.service.SerialService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.HandlerMapping;
 
 @RestController
 public class ChatController {
@@ -26,9 +28,11 @@ public class ChatController {
         return serialService.getTopics();
     }
 
-    @GetMapping(path = "/topics/{topic}", produces = APPLICATION_JSON_UTF8_VALUE)
-    public List<Message> getMessagesByTopic(@PathVariable("topic") @NotBlank String topicBase64) throws UnsupportedEncodingException {
-        String topic = new String(Base64.getDecoder().decode(topicBase64), StandardCharsets.UTF_8.name());
+    @GetMapping(path = "/messages/.*", produces = APPLICATION_JSON_UTF8_VALUE)
+    public List<Message> getMessagesByTopic(HttpServletRequest request) throws UnsupportedEncodingException {
+        //String topic = new String(Base64.getDecoder().decode(topicBase64), StandardCharsets.UTF_8.name());
+        String topic = (String) request.getAttribute(
+            HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
         return Optional.ofNullable(serialService.getTopicMessages(topic)).orElse(new HashSet<>()).stream()
                 .sorted(comparing(Message::getCreatedDateTime)).collect(Collectors.toList());
     }
