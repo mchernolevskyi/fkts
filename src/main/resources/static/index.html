@@ -67,11 +67,15 @@
                   "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">+</a></li>");
               $.each(topics, function (index, value) {
                 $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
-                    (index == 0 ? "active" : "") + "\" href=\"#\">" + value + "</a></li>");
+                    (index == 0 ? "active" : "") + "\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" + value + "</a></li>");
               });
             }
           });
         }, 1000);
+        function changeCurrentTopic(topic) {
+          //console.log("New topic: " + topic);
+          currentTopic = topic;
+        };
         $("#createNewTopicButton").click(function (event) {
           //console.log("New topic button click");
           $.ajax({
