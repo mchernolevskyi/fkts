@@ -1,18 +1,16 @@
 package makswinner.fkts.controller;
 
+import static java.util.Comparator.comparing;
+import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+import javax.validation.Valid;
 import makswinner.fkts.Message;
 import makswinner.fkts.service.SerialService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
-import javax.validation.Valid;
-import java.io.UnsupportedEncodingException;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.util.Comparator.comparing;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 @RestController
 public class ChatController {
@@ -21,12 +19,14 @@ public class ChatController {
     private SerialService serialService;
 
     @GetMapping(path = "/topics", produces = APPLICATION_JSON_UTF8_VALUE)
-    public Set<String> getTopics() {
-        return serialService.getTopics();
+    public List<String> getTopics() {
+        List<String> list = new ArrayList<>(serialService.getTopics());
+        Collections.sort(list);
+        return list;
     }
 
     @GetMapping(path = "/messages", produces = APPLICATION_JSON_UTF8_VALUE)
-    public List<Message> getMessagesByTopic(@RequestParam("topic") String topic) throws UnsupportedEncodingException {
+    public List<Message> getMessagesByTopic(@RequestParam("topic") String topic) {
         return Optional.ofNullable(serialService.getTopicMessages(topic)).orElse(new HashSet<>()).stream()
                 .sorted(comparing(Message::getCreatedDateTime)).collect(Collectors.toList());
     }

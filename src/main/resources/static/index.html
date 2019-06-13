@@ -24,7 +24,7 @@
 <body>
 <div class="container h-100">
   <div class="row h-100">
-    <div class="col-3 bg-light">
+    <div class="col-3 bg-light scrollable">
       <div class="modal fade" id="newTopicModal" tabindex="-1" role="dialog"
            aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -89,7 +89,7 @@
           });
           $("#newTopicModal").modal("hide");
           currentTopic = $("#topic-name").val();
-          //currentTopicBase64 = ?;
+          $("#topic-name").val("");
           event.preventDefault();
         });
       </script>
