@@ -1,6 +1,8 @@
 package makswinner.fkts.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gnu.io.NRSerialPort;
+import java.io.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,9 +14,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -111,6 +110,15 @@ public class SerialService {
     //TODO
   }
 
+  private void saveMessages() {
+    try {
+      new ObjectMapper().writeValue(new File("messages.json"), MESSAGES);
+      log.info("Saved messages to a file");
+    } catch (IOException e) {
+      log.error("Could not save messages to a file", e);
+    }
+  }
+
   private void sendSomeMessages() throws Exception {
     int i = 0;
     while (true) {
@@ -126,6 +134,10 @@ public class SerialService {
       putMessageToTopic(message);
       log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
       Thread.sleep(10000);
+
+      if (i % 5 == 0) {
+        saveMessages();
+      }
     }
   }
 
