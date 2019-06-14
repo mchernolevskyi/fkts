@@ -18,10 +18,12 @@
     }
   </style>
   <script>
-    var currentTopic = "/Україна/Київ/балачки1";
+    var currentTopic = "";
+    var currentTopicChanged = false;
     function changeCurrentTopic(topic) {
       //console.log("New topic: " + topic);
       currentTopic = topic;
+      currentTopicChanged = true;
     };
     function getCurrentTopic() {
       return currentTopic;
@@ -69,14 +71,15 @@
           $.getJSON('/topics', function (data) {
             var topics = data;
             //console.log("Topics: " + topics);
-            if (topics.length != $("#topics")[0].childElementCount - 1) {
+            if (topics.length != $("#topics")[0].childElementCount - 1 || currentTopicChanged == true) {
               $("#topics").html(
-                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">+</a></li>");
+                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">+</a><br></li>");
               $.each(topics, function (index, value) {
                 $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
                     (value == getCurrentTopic() ? " active" : "") +
                     "\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" + value + "</a></li>");
               });
+              currentTopicChanged = false;
             }
           });
         }, 1000);
