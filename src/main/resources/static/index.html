@@ -19,6 +19,13 @@
   </style>
   <script>
     var currentTopic = "/Україна/Київ/балачки1";
+    function changeCurrentTopic(topic) {
+      //console.log("New topic: " + topic);
+      currentTopic = topic;
+    };
+    function getCurrentTopic() {
+      return currentTopic;
+    };
   </script>
 </head>
 <body>
@@ -51,7 +58,7 @@
           </div>
         </div>
       </div>
-      <ul class="nav flex-column" id="topics">
+      <ul class="nav flex-column nav-pills" id="topics">
       </ul>
       <script>
         function newTopic() {
@@ -66,20 +73,13 @@
               $("#topics").html(
                   "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">+</a></li>");
               $.each(topics, function (index, value) {
-                $("#topics").append("<li class=\"nav-item" + (value == currentTopic ? " active" : "") +
-                    "\"><a class=\"nav-link\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" +
-                    (value == currentTopic ? "<b>" : "") +
-                    value +
-                    (value == currentTopic ? "</b>" : "") +
-                    "</a></li>");
+                $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
+                    (value == getCurrentTopic() ? " active" : "") +
+                    "\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" + value + "</a></li>");
               });
             }
           });
         }, 1000);
-        function changeCurrentTopic(topic) {
-          //console.log("New topic: " + topic);
-          currentTopic = topic;
-        };
         $("#createNewTopicButton").click(function (event) {
           //console.log("New topic button click");
           $.ajax({
@@ -95,7 +95,7 @@
             }
           });
           $("#newTopicModal").modal("hide");
-          currentTopic = $("#topic-name").val();
+          changeCurrentTopic($("#topic-name").val());
           $("#topic-name").val("");
           event.preventDefault();
         });
@@ -170,7 +170,7 @@
                     url: "/messages",
                     type: "POST",
                     data: JSON.stringify({
-                      topic: currentTopic,
+                      topic: getCurrentTopic(),
                       user: $("#nick").val(),
                       text: $("#textToSend").val()
                     }),
