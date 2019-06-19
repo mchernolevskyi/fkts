@@ -34,6 +34,8 @@ public class SerialService {
   private static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
   private static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
 
+  private static final String MESSAGES_SAVED_FILENAME = "messages.json";
+
   private static Map<Long, Exception> SEND_EXCEPTIONS;
   private static Map<Long, Exception> RECEIVE_EXCEPTIONS;
 
@@ -49,6 +51,28 @@ public class SerialService {
 
   @Value("${serial.port}")
   private String serialPort;
+
+
+  private void sendSomeMessages() throws Exception {
+    int i = 0;
+    while (true) {
+      String topic = "/Україна/Київ/балачки" + (i % 2 + 1);
+      String user = "Все буде Україна!";
+      String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
+          "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
+      Message message = Message.builder()
+          .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
+          .received(i % 5 == 0)
+          .build();
+      sendMessage(message);
+      log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
+      Thread.sleep(10000);
+
+      if (i % 5 == 0) {
+        saveMessages();
+      }
+    }
+  }
 
   @PostConstruct
   public void init() {
@@ -112,32 +136,10 @@ public class SerialService {
 
   private void saveMessages() {
     try {
-      new ObjectMapper().writeValue(new File("messages.json"), MESSAGES);
+      new ObjectMapper().writeValue(new File(MESSAGES_SAVED_FILENAME), MESSAGES);
       log.info("Saved messages to a file");
     } catch (IOException e) {
       log.error("Could not save messages to a file", e);
-    }
-  }
-
-  private void sendSomeMessages() throws Exception {
-    int i = 0;
-    while (true) {
-      String topic = "/Україна/Київ/балачки" + (i % 2 + 1);
-      String user = "Все буде Україна!";
-      String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
-          "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці.";
-      Message message = Message.builder()
-          .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
-          .received(i % 5 == 0)
-          .build();
-      offerMessageToQueue(message);
-      putMessageToTopic(message);
-      log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
-      Thread.sleep(10000);
-
-      if (i % 5 == 0) {
-        saveMessages();
-      }
     }
   }
 
@@ -162,16 +164,11 @@ public class SerialService {
     }
     topicMessages.add(message);
     MESSAGES.put(message.getTopic(), topicMessages);
-    try {
-      log.info("Topic [{}] ([{}]) has [{}] received messages, last message text is [{}]",
-          message.getTopic(),
-          Base64.getEncoder().encodeToString(message.getTopic().getBytes(StandardCharsets.UTF_8.name())),
-          topicMessages.stream().filter(m -> m.isReceived()).count(),
-          topicMessages.stream().sorted(comparing(Message::getCreatedDateTime).reversed()).findFirst().get().getText()
-      );
-    } catch (UnsupportedEncodingException e) {
-      log.error("Could not log info", e);
-    }
+    log.info("Topic [{}] has [{}] received messages, last message text is [{}]",
+        message.getTopic(),
+        topicMessages.stream().filter(m -> m.isReceived()).count(),
+        topicMessages.stream().sorted(comparing(Message::getCreatedDateTime).reversed()).findFirst().get().getText()
+    );
   }
 
   private void sendMessages(NRSerialPort serial) {
@@ -256,8 +253,8 @@ public class SerialService {
           if (extractedMessage != null) {
             updateRollingArray(longByteArrayOffset, longByteArray, extractedMessage.getMessageEnd());
             longByteArrayOffset -= extractedMessage.getMessageEnd();
-              log.info("Received message, truncated array now has size [{}] bytes, bytes are [{}]",
-                      longByteArrayOffset, longByteArray);
+            log.info("Received message, truncated array now has size [{}] bytes, bytes are [{}]",
+                    longByteArrayOffset, longByteArray);
             Message message = getMessageFromExtractedMessage(extractedMessage);
             log.info("Received message is [{}]", message);
             putMessageToTopic(message);
