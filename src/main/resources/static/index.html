@@ -14,7 +14,7 @@
     }
 
     .h-29 {
-      height: 29% !important;
+      height: 28.5% !important;
     }
 
     .btn-circle {
@@ -84,7 +84,7 @@
           </div>
         </div>
       </div>
-      <ul class="nav flex-column nav-pills" id="topics">
+      <ul class="nav flex-column nav-pills align-content-center" id="topics">
       </ul>
       <script>
         function newTopic() {
@@ -97,17 +97,14 @@
             //console.log("Topics: " + topics);
             if (topics.length != $("#topics")[0].childElementCount - 1 || reloadTopics == true) {
               $("#topics").html(
-                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">"
-                  +
-                  "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
-                  "<button type=\"button\" class=\"btn btn-info btn-circle btn-xl\"><i class=\"fa fa-check\">+</i></button>"
-                  +
-                  "</a><br></li>");
+                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">" +
+                  "<div class=\"text-center\"><button type=\"button\" class=\"btn btn-info btn-circle btn-xl\">" +
+                  "<i class=\"fa fa-check\">+</i></button></div></a><br></li>");
               $.each(topics, function (index, value) {
-                $("#topics").append("<li class=\"nav-item\"><a class=\"nav-link " +
+                $("#topics").append("<li class=\"nav-item\"><div class=\"text-center\"><a class=\"nav-link " +
                     (value == getCurrentTopic() ? " active" : "") +
                     "\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" + value
-                    + "</a></li>");
+                    + "</a></div></li>");
               });
               reloadTopics = false;
             }
@@ -155,8 +152,8 @@
                           style = incomingStyle;
                         }
                         $("#messages").append("<div class=\"row " + style + "\">" +
-                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\">" +
-                            value.createdDateTime + "<br>" +
+                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\"><font size=\"-1\">" +
+                            value.createdDateTime + "</font><br>" +
                             value.user + " >> " + value.text + " (sent: " + value.sent
                             + ", received: " + value.received + ")" +
                             "</div></div>");
@@ -178,7 +175,7 @@
             <form>
               <div class="form-group">
                 <br>
-                <div class="row">
+                <div class="row align-items-center">
                   <div class="col-1">
                     Nick
                   </div>
@@ -193,8 +190,8 @@
                     </small>
                   </div>
                   <div class="col">
-                    <br>
-                    <button type="submit" class="btn btn-primary" id="sendMessageButton">Send
+                    <font size="-3">&nbsp;</font><br>
+                    <button type="submit" class="btn btn-primary"  id="sendMessageButton">Send
                     </button>
                   </div>
                 </div>
