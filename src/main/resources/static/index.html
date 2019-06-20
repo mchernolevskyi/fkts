@@ -155,9 +155,9 @@
                             + "</div></div>");
                       });
                       var objDiv = document.getElementById("messagesScrollable");
-                      //if (objDiv.scrollHeight - objDiv.scrollTop < 800.0) {
-                      objDiv.scrollTop = objDiv.scrollHeight;
-                      //}
+                      if (objDiv.scrollHeight - objDiv.scrollTop < window.innerHeight) {
+                        objDiv.scrollTop = objDiv.scrollHeight;
+                      }
                       reloadMessages = false;
                     }
                   });

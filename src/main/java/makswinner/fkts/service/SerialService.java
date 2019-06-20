@@ -1,8 +1,18 @@
 package makswinner.fkts.service;
 
+import static java.util.Comparator.comparing;
+import static makswinner.fkts.Util.*;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gnu.io.NRSerialPort;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.zip.DataFormatException;
+import javax.annotation.PostConstruct;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,19 +22,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import javax.annotation.PostConstruct;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.zip.DataFormatException;
-
-import static java.util.Comparator.comparing;
-import static makswinner.fkts.Util.*;
 
 @Slf4j
 @Service
@@ -54,14 +51,14 @@ public class SerialService {
   private String serialPort;
 
 
-  private void sendSomeMessages() throws Exception {
+  private void sendSomeMessages() {
     int i = 0;
     while (true) {
       try {
         String topic = "/Україна/Київ/балачки" + (i % 2 + 1);
-        String user = "Все буде Україна!";
+        String user = "Все буде!";
         String text = "" + ++i + " Ще не вмерла України і слава, і воля, Ще нам, браття молодії, усміхнеться доля.\n" +
-            "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці";
+            "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй...";
         Message message = Message.builder()
             .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
             //.received(i % 5 == 0)
