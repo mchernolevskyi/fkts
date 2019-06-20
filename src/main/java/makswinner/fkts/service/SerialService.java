@@ -61,11 +61,11 @@ public class SerialService {
             "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй...";
         Message message = Message.builder()
             .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
-            .received(i % 5 == 0)
+            //.received(i % 5 == 0)
             .build();
         sendMessage(message);
         log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
-        Thread.sleep(7000);
+        Thread.sleep(20000);
 
         if (i % 5 == 0) {
           saveMessages();

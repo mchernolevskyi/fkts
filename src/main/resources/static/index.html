@@ -92,7 +92,7 @@
               reloadTopics = false;
             }
           });
-        }, 2000);
+        }, 1000);
         $("#createNewTopicButton").click(function (event) {
           $.ajax({
             url: "/topics",
@@ -136,7 +136,9 @@
                             "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\">" +
                             "<font size=\"-1\">"
                             + value.user + "</font><br>" + value.text + "<br><font size=\"-2\">"
-                            + value.createdDateTime.substring(0, value.createdDateTime.indexOf('.'))
+                            + value.createdDateTime.substring(
+                              0, value.createdDateTime.indexOf('.') == -1 ?
+                                value.createdDateTime.length : value.createdDateTime.indexOf('.'))
                               .replace('T', ' ')
                             + " (sent: " + value.sent + ", received: " + value.received
                             + ", checksumOk: " + value.checksumOk + ")</font>"
