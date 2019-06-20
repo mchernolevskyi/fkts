@@ -42,7 +42,6 @@
     var reloadMessages = false;
 
     function changeCurrentTopic(topic) {
-      //console.log("New topic: " + topic);
       currentTopic = topic;
       reloadTopics = true;
       reloadMessages = true;
@@ -88,7 +87,6 @@
       </ul>
       <script>
         function newTopic() {
-          //console.log("New topic");
           $("#newTopicModal").modal("show");
         };
         window.setInterval(function () {
@@ -111,7 +109,6 @@
           });
         }, 1000);
         $("#createNewTopicButton").click(function (event) {
-          //console.log("New topic button click");
           $.ajax({
             url: "/topics",
             type: "POST",
@@ -141,8 +138,6 @@
                     var messages = data;
                     //console.log("Messages length: " + messages.length);
                     if (messages.length != $("#messages")[0].childElementCount || reloadMessages == true) {
-                      //console.log("Updating messages because childElementCount: " + $(
-                      //    "#messages")[0].childElementCount);
                       $("#messages").html("");
                       $.each(messages, function (index, value) {
                         var outgoingStyle = "justify-content-start ml-1";
@@ -152,11 +147,12 @@
                           style = incomingStyle;
                         }
                         $("#messages").append("<div class=\"row " + style + "\">" +
-                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\"><font size=\"-1\">" +
-                            value.createdDateTime + "</font><br>" +
-                            value.user + " >> " + value.text + " (sent: " + value.sent
-                            + ", received: " + value.received + ")" +
-                            "</div></div>");
+                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\"><font size=\"-1\">"
+                            + value.user + "</font><br>" + value.text + "<br><font size=\"-2\">"
+                            + value.createdDateTime.substring(0, value.createdDateTime.indexOf('.')).replace('T', ' ')
+                            + " (sent: " + value.sent + ", received: " + value.received
+                            + ", checksumOk: " + value.checksumOk + ")</font>"
+                            + "</div></div>");
                       });
                       var objDiv = document.getElementById("messagesScrollable");
                       //if (objDiv.scrollHeight - objDiv.scrollTop < 800.0) {
