@@ -2,8 +2,10 @@
 <head>
   <title>FKTS</title>
   <link rel="stylesheet" href="bootstrap.min.css">
+  <link rel="stylesheet" href="fa-all.min.css">
   <script src="jquery-3.4.1.min.js"></script>
   <script src="bootstrap.min.js"></script>
+  <script src="fa-all.min.js" data-auto-replace-svg="nest"></script>
   <style>
     .scrollable {
       overflow-y: auto;
@@ -15,25 +17,6 @@
 
     .h-29 {
       height: 28.5% !important;
-    }
-
-    .btn-circle {
-      width: 30px;
-      height: 30px;
-      padding: 6px 0px;
-      border-radius: 15px;
-      text-align: center;
-      font-size: 12px;
-      line-height: 1.42857;
-    }
-
-    .btn-circle.btn-xl {
-      width: 70px;
-      height: 70px;
-      padding: 10px 16px;
-      border-radius: 35px;
-      font-size: 24px;
-      line-height: 1.33;
     }
   </style>
   <script>
@@ -92,14 +75,16 @@
         window.setInterval(function () {
           $.getJSON('/topics', function (data) {
             var topics = data;
-            //console.log("Topics: " + topics);
             if (topics.length != $("#topics")[0].childElementCount - 1 || reloadTopics == true) {
               $("#topics").html(
-                  "<li class=\"nav-item\"><a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">" +
-                  "<div class=\"text-center\"><button type=\"button\" class=\"btn btn-info btn-circle btn-xl\">" +
-                  "<i class=\"fa fa-check\">+</i></button></div></a><br></li>");
+                  "<li class=\"nav-item\">" +
+                  "<a class=\"nav-link\" href=\"#\" onClick=\"newTopic()\">" +
+                  "<div class=\"text-center\">" +
+                  "<i class=\"fas fa-plus-circle fa-3x\"></i>" +
+                  "</div></a><br></li>");
               $.each(topics, function (index, value) {
-                $("#topics").append("<li class=\"nav-item\"><div class=\"text-center\"><a class=\"nav-link " +
+                $("#topics").append("<li class=\"nav-item\"><div class=\"text-center\">" +
+                    "<a class=\"nav-link " +
                     (value == getCurrentTopic() ? " active" : "") +
                     "\" href=\"#\" onClick=\"changeCurrentTopic('" + value + "')\">" + value
                     + "</a></div></li>");
@@ -107,7 +92,7 @@
               reloadTopics = false;
             }
           });
-        }, 1000);
+        }, 2000);
         $("#createNewTopicButton").click(function (event) {
           $.ajax({
             url: "/topics",
@@ -137,7 +122,8 @@
                   function (data) {
                     var messages = data;
                     //console.log("Messages length: " + messages.length);
-                    if (messages.length != $("#messages")[0].childElementCount || reloadMessages == true) {
+                    if (messages.length != $("#messages")[0].childElementCount
+                        || reloadMessages == true) {
                       $("#messages").html("");
                       $.each(messages, function (index, value) {
                         var outgoingStyle = "justify-content-start ml-1";
@@ -147,9 +133,11 @@
                           style = incomingStyle;
                         }
                         $("#messages").append("<div class=\"row " + style + "\">" +
-                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\"><font size=\"-1\">"
+                            "<div class=\"shadow p-2 mb-1 bg-white rounded col-10\">" +
+                            "<font size=\"-1\">"
                             + value.user + "</font><br>" + value.text + "<br><font size=\"-2\">"
-                            + value.createdDateTime.substring(0, value.createdDateTime.indexOf('.')).replace('T', ' ')
+                            + value.createdDateTime.substring(0, value.createdDateTime.indexOf('.'))
+                              .replace('T', ' ')
                             + " (sent: " + value.sent + ", received: " + value.received
                             + ", checksumOk: " + value.checksumOk + ")</font>"
                             + "</div></div>");
