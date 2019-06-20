@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.DataFormatException;
 
@@ -31,7 +32,7 @@ public class SerialService {
 
   public static final int MAX_MESSAGE_SIZE = 222;
 
-  private static final BlockingQueue<Message> OUT_QUEUE = new LinkedBlockingQueue(32);
+  private static final Queue<Message> OUT_QUEUE = new ConcurrentLinkedQueue();
   private static final Map<String, Set<Message>> MESSAGES = new ConcurrentHashMap<>();
 
   private static final String MESSAGES_SAVED_FILENAME = "messages.json";
@@ -40,7 +41,7 @@ public class SerialService {
   private static Map<Long, Exception> RECEIVE_EXCEPTIONS;
 
   private static final int BAUD_RATE = 9600;
-  private static final int TIMES_TO_SEND_ONE_MESSAGE = 2;
+  private static final int TIMES_TO_SEND_ONE_MESSAGE = 1;
   private static final long TIMEOUT_BETWEEN_SENDING_ONE_MESSAGE = 2000;
   private static final long TIMEOUT_BETWEEN_SENDING = 5000;
   private static final long TIMEOUT_BETWEEN_RECEIVING = 200;
@@ -63,11 +64,11 @@ public class SerialService {
             "Згинуть наші вороженьки, як роса на сонці, Запануєм і ми, браття, у своїй сторонці";
         Message message = Message.builder()
             .topic(topic).user(user).text(text).createdDateTime(LocalDateTime.now())
-            .received(i % 5 == 0)
+            //.received(i % 5 == 0)
             .build();
         sendMessage(message);
         log.info("Put message [{}] to queue, thread [{}]", message, Thread.currentThread().getName());
-        Thread.sleep(10000);
+        Thread.sleep(20000);
 
         if (i % 5 == 0) {
           saveMessages();
@@ -153,6 +154,7 @@ public class SerialService {
       return;
     } else {
       OUT_QUEUE.offer(message);
+      log.info("Queue size [{}]", OUT_QUEUE.size());
     }
   }
 
